@@ -12,8 +12,8 @@ clean_meize_raw <- function(maize_heigh_raw){
     ) %>%
     # Fix the Types
     mutate(
-      day = as.integer(factor(day, levels = c(7, 14, 20, 27))),
-      pot = as.integer(pot),
+      day_idx  = as.integer(factor(day, levels = c(7, 14, 20, 27))), 
+      pot      = as.integer(pot),
       plant_id  = as.integer(plant_id),
       treatment = as.integer(factor(treatment,levels = c("Control","Sham","EMF")))
     ) %>%
