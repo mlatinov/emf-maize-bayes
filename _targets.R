@@ -45,6 +45,14 @@ list(
   tar_target(
     name = m3_maize_model_pp,
     command = m3_stan_model(model_data_maize_heigh, prior_only = 1)
+  ),
+  ## M4 Gompertz per treatment ##
+  tar_target(
+    name = m4_maize_model,
+    command = m4_stan_model(model_data_maize_heigh, prior_only = 0)
+  ),
+  tar_target(
+    name = m4_maize_model_pp,
+    command = m4_stan_model(model_data_maize_heigh, prior_only = 1)
   )
-  
 )
