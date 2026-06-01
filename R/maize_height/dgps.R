@@ -73,3 +73,40 @@ maize_h_m3_dgp <- function(
   # Return a Tibble 
   return(tibble(pot_id = pot, day = day, height = height))
 }
+
+#### M4 Gompertz per treatment, no pots ####
+maize_h_m4_dgp <- function(
+  n = 700,
+  prob_treatment = c(6, 4, 6) / 16,
+  prob_day       = c(255, 249, 169, 95) / 768
+){
+
+  # Treatment + day index
+  treatment <- sample(1:3, n, replace = TRUE, prob = prob_treatment)
+  day       <- sample(1:4, n, replace = TRUE, prob = prob_day)
+
+  # Real time
+  time_values <- c(7, 14, 20, 27)
+  t <- time_values[day]
+
+  # Parameters
+  A_t   <- rlnorm(n = 3, meanlog =  log(40),  sdlog = 0.3)
+  k_t   <- rlnorm(n = 3, meanlog =  log(0.15),sdlog =  0.5)
+  tao_t <- rnorm(n = 3, mean = 9, sd = 3)
+  sigma_day <- rexp(n = 4, rate = 2)
+
+  # Gompertz Equation for the mean 
+  mu_i <- A_t[treatment] * exp(-exp(-k_t[treatment] * (t - tao_t[treatment])))
+
+  # Simulate Plant height 
+  plant_height <- rlnorm(n, log(mu_i), sigma_day[day])
+
+  return(
+    data.frame(
+      treatment = treatment,
+      day_index = day,
+      day = t,
+      height = plant_height
+    )
+  )
+}
