@@ -33,7 +33,7 @@ m2_stan_model <- function(model_data_maize_heigh, prior_only = 0){
     data = list(
       N = nrow(model_data_maize_heigh),
       treatment = model_data_maize_heigh$treatment,
-      day       = model_data_maize_heigh$day,
+      day       = model_data_maize_heigh$day_idx,
       plant_height = model_data_maize_heigh$plant_height,
       prior_only   = prior_only
     ),
@@ -56,7 +56,7 @@ m3_stan_model <- function(model_data_maize_heigh, prior_only = 0){
     data = list(
       N   = nrow(model_data_maize_heigh),
       plant_height = model_data_maize_heigh$plant_height,
-      day          = model_data_maize_heigh$day,
+      day          = model_data_maize_heigh$day_idx,
       pot_id       = model_data_maize_heigh$pot_id,
       prior_only = prior_only  
     ),
@@ -67,3 +67,32 @@ m3_stan_model <- function(model_data_maize_heigh, prior_only = 0){
   )
   return(m3_sample)
 }
+
+#### M4 Gompertz per treatment ####
+m4_stan_model <- function(model_data_maize_heigh, prior_only = 0, grid_points = 51){
+  
+  # Get the model 
+  m4_model <- cmdstanr::cmdstan_model(stan_file = "Stan/maize_height/M4_maize_height.stan")
+
+  # Sample 
+  m4_sample <- m4_model$sample(
+    data = list(
+      N         = nrow(model_data_maize_heigh),
+      treatment = model_data_maize_heigh$treatment,
+      day_idx   = model_data_maize_heigh$day_idx,
+      t         = model_data_maize_heigh$day,
+      plant_height = model_data_maize_heigh$plant_height,
+      G            = grid_points,
+      prior_only   = prior_only 
+    ),
+    output_dir    = "stan_results/", 
+    iter_sampling = 2000,
+    chains        = 4,
+    seed          = 42 
+  )
+  return(m4_sample)
+}
+
+
+
+
