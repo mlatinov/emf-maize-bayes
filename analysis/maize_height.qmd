@@ -51,6 +51,10 @@ tar_load(m2_maize_model_pp)
 tar_load(m3_maize_model)
 tar_load(m3_maize_model_pp)
 
+## M4 
+tar_load(m4_maize_model)
+tar_load(m4_maize_model_pp)
+
 ```
 
 # M1  — Treatment only
@@ -464,4 +468,128 @@ ggplot(pot_medians, aes(x = factor(day, labels = c("7","14","20","27")),
        title = "Per-pot posterior medians by treatment and day",
        subtitle = "Each point is one pot; vertical bars are 90% CI") +
   theme_minimal()
+```
+
+# M4 Gompertz per treatment 
+
+## Model Diagnostics
+
+### MCMC Sampler Diagnostics
+
+Trace ranks should look uniform across chains — no chain occupying systematically 
+high or low ranks. With a model this simple the posterior geometry is trivial and 
+mixing is essentially perfect.
+
+```{r}
+plot_rank(model = m4_maize_model)
+```
+
+`cmdstan_diagnose()` reported no problems: no divergences, treedepth and E-BFMI 
+satisfactory, R-hat and ESS within thresholds for every parameter. The ESS plots 
+below appear to alarm visually but the numerical thresholds are not violated — 
+bulk-ESS and tail-ESS for every model parameter are in the thousands (out of 4000 
+post-warmup draws), and every R-hat rounds to 1.00. The colour-banding crosses 0.5 
+at the dramatic-looking boundary but the meaningful danger threshold is 0.1.
+
+```{r}
+m4_r_hat    <- plot_rhat(model = m4_maize_model)
+m4_ess_tail <- plot_ess(model = m4_maize_model, type = "tail")
+m4_ess_bulk <- plot_ess(model = m4_maize_model, type = "bulk")
+
+(m4_ess_tail + m4_ess_bulk) / m4_r_hat +
+    plot_annotation(
+        title = "Effective Sample Size and R-hats — M4 Maize Model",
+        theme = theme(plot.title = element_text(size = 20))
+    )
+```
+
+**Sampler verdict: clean.** Any failure we see below is a model-specification 
+issue, not an MCMC issue.
+
+### Prior Predictive Checks
+
+```{r}
+m4_pr_dens <- plot_prior_predictive_dens(
+    model         = m4_maize_model_pp,
+    yrep_var      = "h_rep",
+    y             = model_data_maize_heigh$plant_height,
+    outcome_label = "Maize Height"
+) + coord_cartesian(xlim = c(0, 80))
+
+m4_pr_mean <- plot_prior_predictive_stat(
+    model         = m4_maize_model_pp,
+    yrep_var      = "h_rep",
+    y             = model_data_maize_heigh$plant_height,
+    outcome_label = "Maize Height",
+    stat          = "mean"
+) + coord_cartesian(xlim = c(15, 35))
+
+m4_pr_sd <- plot_prior_predictive_stat(
+    model         = m4_maize_model_pp,
+    yrep_var      = "h_rep",
+    y             = model_data_maize_heigh$plant_height,
+    outcome_label = "Maize Height",
+    stat          = "sd"
+) + coord_cartesian(xlim = c(10, 25))
+
+(m4_pr_mean + m4_pr_sd) / m4_pr_dens +
+    plot_annotation(
+        title = "Prior Predictive Density and Summary Statistics",
+        theme = theme(plot.title = element_text(size = 20))
+    )
+```
+
+### Posterior Predictive Checks
+
+This is where M1.1 fails — exactly as the modelling ladder predicted. Three 
+independent symptoms, all pointing at the same cause:
+
+1. **Density (bottom panel).** The observed distribution is clearly **bimodal**: 
+   two humps, corresponding to small early-day plants and tall late-day plants 
+   piled into the same marginal. Every posterior replicate is a smooth 
+   single-mode lognormal. M1.1 has no day parameter, so it cannot reproduce 
+   the bimodal structure in principle.
+2. **SD test statistic.** The posterior predictive SD is centred around 17 cm 
+   while the observed SD is 13 cm — the model over-predicts spread because 
+   `σ` is being forced wide enough to absorb day-7-to-day-27 growth as if it 
+   were within-group noise.
+3. **Posterior predictive tail (not shown — visible by inspecting `range(h_rep)`).** 
+   With `σ ≈ 0.62` on the log scale, the right tail of the lognormal is 
+   heavy enough to produce occasional draws orders of magnitude larger than 
+   any real maize plant. This is the model being internally consistent with a 
+   parameter value that was itself forced wrong by the missing day structure.
+
+All three symptoms have the same root cause: M1.1 absorbs between-day 
+variation into within-group variation. The fix is structural, not 
+likelihood-side — adding day to the mean function (M1.2) is predicted to 
+collapse `σ`, eliminate the heavy tail, and at least partially recover the 
+bimodality. That prediction is the validation criterion for M1.2.
+
+```{r}
+m4_ppc_dens <- plot_ppc_dens(
+    model         = m4_maize_model,
+    yrep_var      = "h_rep",
+    y             = model_data_maize_heigh$plant_height,
+    outcome_label = "Maize Height"
+) + coord_cartesian(xlim = c(0, 80))
+
+m4_ppc_mean <- plot_ppc_stat(
+    model    = m4_maize_model,
+    yrep_var = "h_rep",
+    y        = model_data_maize_heigh$plant_height,
+    stat     = "mean"
+) + coord_cartesian(xlim = c(15, 35))
+
+m4_ppc_sd <- plot_ppc_stat(
+    model    = m4_maize_model,
+    yrep_var = "h_rep",
+    y        = model_data_maize_heigh$plant_height,
+    stat     = "sd"
+) + coord_cartesian(xlim = c(10, 25))
+
+(m4_ppc_mean + m4_ppc_sd) / m4_ppc_dens +
+    plot_annotation(
+        title = "Posterior Predictive Density and Summary Statistics",
+        theme = theme(plot.title = element_text(size = 20))
+    )
 ```
