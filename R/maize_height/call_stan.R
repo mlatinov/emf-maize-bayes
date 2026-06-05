@@ -93,6 +93,65 @@ m4_stan_model <- function(model_data_maize_heigh, prior_only = 0, grid_points = 
   return(m4_sample)
 }
 
+#### Hierarchical cell-means, pots pooled within treatment ####
+m5_stan_model <- function(
+  model_data_maize_heigh,
+  prior_only    = 0,
+  iter_sampling = 4000,
+  adapt_delta   = 0.95,
+  chains        = 4
+){
+  # Get the model 
+  model_5 <- cmdstanr::cmdstan_model(stan_file = "Stan/maize_height/M5_maize_height.stan")
 
+  # Sample 
+  m5_sample <- model_5$sample(
+    data = list(
+      N  = nrow(model_data_maize_heigh),
+      plant_height  = model_data_maize_heigh$plant_height,
+      treatment     = model_data_maize_heigh$treatment,
+      day_idx       = model_data_maize_heigh$day_idx,
+      pot_idx       = model_data_maize_heigh$pot_id,
+      pot_treatment = c(rep(1, 6), rep(2, 4), rep(3, 6)),
+      prior_only    = prior_only   
+    ),
+    output_dir    = "stan_results/",  
+    iter_sampling = iter_sampling,
+    adapt_delta   = adapt_delta,
+    chains        = chains,
+    seed = 42
+  )
+  return(m5_sample)
+}
 
+#### Hierarchical Gompertz, per-pot curves pooled within treatment ####
+m6_stan_model <- function(
+  model_data_maize_heigh, 
+  prior_only    = 0,
+  iter_sampling = 4000,
+  chains        = 4,
+  adapt_delta   = 0.95
+){
 
+  # Get the model 
+  m6_model <- cmdstanr::cmdstan_model(stan_file = "Stan/maize_height/M6_maize_height.stan")
+
+  # Sample 
+  m6_sample <- m6_model$sample(
+    data = list(
+      N  = nrow(model_data_maize_heigh),
+      plant_height  = model_data_maize_heigh$plant_height,
+      day_idx       = model_data_maize_heigh$day_idx,
+      t             = model_data_maize_heigh$day,
+      pot_idx       = model_data_maize_heigh$pot_id,
+      pot_treatment = c(rep(1, 6), rep(2, 4), rep(3, 6)),
+      prior_only    = prior_only
+    ),
+    output_dir    = "stan_results/",
+    iter_sampling = iter_sampling,
+    chains        = chains,
+    adapt_delta   = adapt_delta,
+    seed = 42
+  )
+  return(m6_sample)
+}
