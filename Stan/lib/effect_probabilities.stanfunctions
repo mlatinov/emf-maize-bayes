@@ -1,0 +1,25 @@
+/* =============================================================================
+   effect_probabilities.stanfunctions
+   -----------------------------------------------------------------------------
+    #include lib/effect_probabilities.stanfunctions
+============================================================================= */
+
+// ---- Threshold / direction indicators (one draw) ---------------------------
+
+int effect_gt(real effect, real threshold) { return effect > threshold; }
+int effect_lt(real effect, real threshold) { return effect < threshold; }
+int is_positive(real effect)               { return effect > 0; }
+int is_negative(real effect)               { return effect < 0; }
+
+// Region Of Practical Equivalence: is the effect inside [lower, upper]?
+// Averaged across draws this is the posterior probability of practical null.
+int in_rope(real effect, real lower, real upper) {
+  return (effect >= lower) && (effect <= upper);
+}
+
+// Symmetric ROPE convenience: |effect| <= radius.
+int in_rope_symmetric(real effect, real radius) {
+  return (effect >= -radius) && (effect <= radius);
+}
+
+
