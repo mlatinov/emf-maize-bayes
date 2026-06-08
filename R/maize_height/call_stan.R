@@ -130,7 +130,8 @@ m6_stan_model <- function(
   prior_only    = 0,
   iter_sampling = 4000,
   chains        = 4,
-  adapt_delta   = 0.95
+  adapt_delta   = 0.95,
+  grid_points   = 51
 ){
 
   # Get the model 
@@ -145,7 +146,8 @@ m6_stan_model <- function(
       t             = model_data_maize_heigh$day,
       pot_idx       = model_data_maize_heigh$pot_id,
       pot_treatment = c(rep(1, 6), rep(2, 4), rep(3, 6)),
-      prior_only    = prior_only
+      prior_only    = prior_only,
+      G             = grid_points
     ),
     output_dir    = "stan_results/",
     iter_sampling = iter_sampling,
