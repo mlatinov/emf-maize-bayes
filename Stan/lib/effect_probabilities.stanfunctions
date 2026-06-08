@@ -13,13 +13,19 @@ int is_negative(real effect)               { return effect < 0; }
 
 // Region Of Practical Equivalence: is the effect inside [lower, upper]?
 // Averaged across draws this is the posterior probability of practical null.
-int in_rope(real effect, real lower, real upper) {
-  return (effect >= lower) && (effect <= upper);
+int in_rope(real effect, real low, real up) {
+  return (effect >= low) && (effect <= up);
 }
 
 // Symmetric ROPE convenience: |effect| <= radius.
 int in_rope_symmetric(real effect, real radius) {
   return (effect >= -radius) && (effect <= radius);
 }
+
+// Variance Decompositon r2
+real bayes_R2_general(vector mu, real var_residual) {
+    real var_fit = variance(mu);
+    return var_fit / (var_fit + var_residual);
+} 
 
 
