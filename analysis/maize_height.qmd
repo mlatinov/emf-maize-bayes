@@ -39,104 +39,63 @@ library(stanviz)
 # Load the cleaned data from the pipeline and models
 tar_load(model_data_maize_heigh)
 
-## M1  Plant height ~ Treatment only
-tar_load(m1_maize_model)
-tar_load(m1_maize_model_pp)
+## M5 Hierarchical cell-means, pots pooled within treatment 
+tar_load(m5_maize_model)
+tar_load(m5_maize_model_pp)
 
-## M2 Plant height ~  Treatment × Day
-tar_load(m2_maize_model)
-tar_load(m2_maize_model_pp)
-
-## M3 Plant height ~ Pot x Day
-tar_load(m3_maize_model)
-tar_load(m3_maize_model_pp)
-
-## M4 
-tar_load(m4_maize_model)
-tar_load(m4_maize_model_pp)
+## M6 Hierarchical Golmez
+tar_load(m6_maize_model)
+tar_load(m6_maize_model_pp)
 
 ```
 
-# M1  — Treatment only
-
-`plant_height ~ treatment`, with `plant_height ~ LogNormal(α[treatment], σ)` and 
-weakly-informative priors `α ~ Normal(3, 1)`, `σ ~ Exponential(1)`. 
-
-This is the deliberately naive baseline (M1.1 in the project plan): only treatment, no 
-day, no pot. We *expect* it to be misspecified, because we know the data is structured 
-by day. The point of fitting it is to (1) validate the indexing, priors, and PPC 
-machinery on the simplest possible model, and (2) make the misspecification visible 
-so the next rung (adding day) is empirically motivated rather than assumed.
+# Hierarchical cell-means pots pooled within treatment 
 
 ## Model Diagnostics
 
 ### MCMC Sampler Diagnostics
 
-Trace ranks should look uniform across chains — no chain occupying systematically 
-high or low ranks. With a model this simple the posterior geometry is trivial and 
-mixing is essentially perfect.
-
 ```{r}
-plot_rank(model = m1_maize_model)
+plot_rank(model = m5_maize_model)
 ```
 
-`cmdstan_diagnose()` reported no problems: no divergences, treedepth and E-BFMI 
-satisfactory, R-hat and ESS within thresholds for every parameter. The ESS plots 
-below appear to alarm visually but the numerical thresholds are not violated — 
-bulk-ESS and tail-ESS for every model parameter are in the thousands (out of 4000 
-post-warmup draws), and every R-hat rounds to 1.00. The colour-banding crosses 0.5 
-at the dramatic-looking boundary but the meaningful danger threshold is 0.1.
-
 ```{r}
-m1_r_hat    <- plot_rhat(model = m1_maize_model)
-m1_ess_tail <- plot_ess(model = m1_maize_model, type = "tail")
-m1_ess_bulk <- plot_ess(model = m1_maize_model, type = "bulk")
+m5_r_hat    <- plot_rhat(model = m5_maize_model)
+m5_ess_tail <- plot_ess(model = m5_maize_model, type = "tail")
+m5_ess_bulk <- plot_ess(model = m5_maize_model, type = "bulk")
 
-(m1_ess_tail + m1_ess_bulk) / m1_r_hat +
+(m5_ess_tail + m5_ess_bulk) / m5_r_hat +
     plot_annotation(
-        title = "Effective Sample Size and R-hats — Simple Maize Model",
+        title = "Effective Sample Size and R-hats — M5 Maize Model",
         theme = theme(plot.title = element_text(size = 20))
     )
 ```
 
-**Sampler verdict: clean.** Any failure we see below is a model-specification 
-issue, not an MCMC issue.
-
 ### Prior Predictive Checks
 
-Before looking at the posterior, we check that the priors alone produce data 
-that looks vaguely like maize. The prior-predictive mean sits around 24 cm and 
-the SD around 17 cm; the observed values fall well inside both prior-predictive 
-distributions. The bottom panel overlays prior-implied datasets against the 
-observed density: the observed line sits comfortably inside the cloud of 
-prior-predictive curves. Priors are loose but not absurd — they don't rule out 
-the data before we even see it.
-
 ```{r}
-m1_pr_dens <- plot_prior_predictive_dens(
-    model         = m1_maize_model_pp,
+m5_pr_dens <- plot_ppc_dens(
+    model         = m5_maize_model_pp,
     yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height"
-)
-
-m1_pr_mean <- plot_prior_predictive_stat(
-    model         = m1_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
     outcome_label = "Maize Height",
+    y             = model_data_maize_heigh$plant_height,
+) + coord_cartesian(xlim = c(0, 80))
+
+m5_pr_mean <- plot_ppc_stat(
+    model         = m5_maize_model_pp,
+    yrep_var      = "h_rep",
+    y             = model_data_maize_heigh$plant_height,
     stat          = "mean"
-)
+) + coord_cartesian(xlim = c(15, 35))
 
-m1_pr_sd <- plot_prior_predictive_stat(
-    model         = m1_maize_model_pp,
+m5_pr_sd <- plot_ppc_stat(
+    model         = m5_maize_model_pp,
     yrep_var      = "h_rep",
     y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
     stat          = "sd"
-)
+) + coord_cartesian(xlim = c(10, 25))
 
-(m1_pr_mean + m1_pr_sd) / m1_pr_dens +
+(m5_pr_mean + m5_pr_sd) / m5_pr_dens +
     plot_annotation(
         title = "Prior Predictive Density and Summary Statistics",
         theme = theme(plot.title = element_text(size = 20))
@@ -145,60 +104,310 @@ m1_pr_sd <- plot_prior_predictive_stat(
 
 ### Posterior Predictive Checks
 
-This is where M1.1 fails — exactly as the modelling ladder predicted. Three 
-independent symptoms, all pointing at the same cause:
-
-1. **Density (bottom panel).** The observed distribution is clearly **bimodal**: 
-   two humps, corresponding to small early-day plants and tall late-day plants 
-   piled into the same marginal. Every posterior replicate is a smooth 
-   single-mode lognormal. M1.1 has no day parameter, so it cannot reproduce 
-   the bimodal structure in principle.
-2. **SD test statistic.** The posterior predictive SD is centred around 17 cm 
-   while the observed SD is 13 cm — the model over-predicts spread because 
-   `σ` is being forced wide enough to absorb day-7-to-day-27 growth as if it 
-   were within-group noise.
-3. **Posterior predictive tail (not shown — visible by inspecting `range(h_rep)`).** 
-   With `σ ≈ 0.62` on the log scale, the right tail of the lognormal is 
-   heavy enough to produce occasional draws orders of magnitude larger than 
-   any real maize plant. This is the model being internally consistent with a 
-   parameter value that was itself forced wrong by the missing day structure.
-
-All three symptoms have the same root cause: M1.1 absorbs between-day 
-variation into within-group variation. The fix is structural, not 
-likelihood-side — adding day to the mean function (M1.2) is predicted to 
-collapse `σ`, eliminate the heavy tail, and at least partially recover the 
-bimodality. That prediction is the validation criterion for M1.2.
-
 ```{r}
-m1_ppc_dens <- plot_ppc_dens(
-    model         = m1_maize_model,
+m5_ppc_dens <- plot_ppc_by_group(
+    model         = m5_maize_model,
     yrep_var      = "h_rep",
+    group         = model_data_maize_heigh$day_idx,
     y             = model_data_maize_heigh$plant_height,
     outcome_label = "Maize Height"
-)
+) + coord_cartesian(xlim = c(0, 80))
 
-m1_ppc_mean <- plot_ppc_stat(
-    model    = m1_maize_model,
+m5_ppc_mean <- plot_ppc_stat(
+    model    = m5_maize_model,
     yrep_var = "h_rep",
     y        = model_data_maize_heigh$plant_height,
     stat     = "mean"
 ) + coord_cartesian(xlim = c(15, 35))
 
-m1_ppc_sd <- plot_ppc_stat(
-    model    = m1_maize_model,
+m5_ppc_sd <- plot_ppc_stat(
+    model    = m5_maize_model,
     yrep_var = "h_rep",
     y        = model_data_maize_heigh$plant_height,
     stat     = "sd"
 ) + coord_cartesian(xlim = c(10, 25))
 
-(m1_ppc_mean + m1_ppc_sd) / m1_ppc_dens +
+(m5_ppc_mean + m5_ppc_sd) / m5_ppc_dens +
     plot_annotation(
         title = "Posterior Predictive Density and Summary Statistics",
         theme = theme(plot.title = element_text(size = 20))
     )
 ```
 
-# M2 — Treatment × Day
+### Predictive error scatter
+```{r}
+plot_ppc_error_scatter(
+    model = m5_maize_model,
+    y = model_data_maize_heigh$plant_height,
+    yrep_var = "h_rep",
+    x_label = "Plant Height"
+) + labs(
+        title = "Posterior Predictive Errors",
+        y     = "Predicted Error = Y - E[Y_rep]") +
+    theme(
+        plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+    )
+```
+
+## Inference
+
+### Cell-level summaries Intervals 
+
+```{r}
+day_7_f <- plot_coef_forest(
+    model = m5_maize_model,
+    pars = c("median_height[1,1]","median_height[2,1]","median_height[3,1]"),
+    labels = c(
+        "median_height[1,1]" = "Control",
+        "median_height[2,1]" = "SHAM",
+        "median_height[3,1]" = "EMS"
+    ),
+    null_line = 10.4
+) + labs(
+    title = "Posterior Maize Height Day 7",
+     x = "Posterior Height (cm)"
+    )
+
+day_14_f <- plot_coef_forest(
+    model = m5_maize_model,
+    pars = c("median_height[1,2]","median_height[2,2]","median_height[3,2]"),
+    labels = c(
+        "median_height[1,2]" = "Control",
+        "median_height[2,2]" = "SHAM",
+        "median_height[3,2]" = "EMS"
+    ),
+    null_line = 24.3
+) + labs(
+    title = "Posterior Maize Height Day 14",
+    x = "Posterior Height (cm)"
+    )
+
+day_20_f <- plot_coef_forest(
+    model = m5_maize_model,
+    pars = c("median_height[1,3]","median_height[2,3]","median_height[3,3]"),
+    labels = c(
+        "median_height[1,3]" = "Control",
+        "median_height[2,3]" = "SHAM",
+        "median_height[3,3]" = "EMS"
+    ),
+    null_line = 30.6
+) + labs(
+    title = "Posterior Maize Height Day 20",
+    x = "Posterior Height (cm)"
+    )
+
+day_27_f <- plot_coef_forest(
+    model = m5_maize_model,
+    pars = c("median_height[1,4]","median_height[2,4]","median_height[3,4]"),
+    labels = c(
+        "median_height[1,4]" = "Control",
+        "median_height[2,4]" = "SHAM",
+        "median_height[3,4]" = "EMS"
+    ),
+    null_line = 35.8
+)+ labs(
+    title = "Posterior Maize Height Day 27",
+    x = "Posterior Height (cm)"
+    )
+
+## Combine the plots 
+(day_7_f + day_14_f) / (day_20_f + day_27_f) +
+    plot_annotation(
+        title = "Posterior Maize Height Day by Day Comparison",
+        theme = theme(
+            plot.title = element_text(
+                size = 20,
+                face = "bold",
+                hjust = 0.5,
+            )
+        )
+)
+```
+
+### Pairwise contrasts per day
+
+```{r}
+plot_param_halfeye(
+    model = m5_maize_model,
+    pars  = c(
+        "log_diff_emf_vs_control[1]",
+        "log_diff_emf_vs_control[2]",
+        "log_diff_emf_vs_control[3]",
+        "log_diff_emf_vs_control[4]"
+    ),
+    labels = c(
+        "log_diff_emf_vs_control[1]" = "Day 7",
+        "log_diff_emf_vs_control[2]" = "Day 14",
+        "log_diff_emf_vs_control[3]" = "Day 20",
+        "log_diff_emf_vs_control[4]" = "Day 27"
+    )
+) + labs(
+    title = "Posterior Log Difference EMS - Control by Days",
+    x     = "Posterior Log Difference EMS - Control" 
+    ) + 
+    theme(plot.title = element_text(size = 20, face = "bold"))
+
+```
+
+### Probability-of-direction indicators 
+
+```{r}
+pd_emf_control <- m5_maize_model$draws("prob_emf_vs_control_positive", format = "draws_matrix") %>%
+    colMeans()
+pd_emf_sham <- m5_maize_model$draws("prob_emf_vs_sham_positive", format = "draws_matrix") %>%
+    colMeans()
+pd_sham_control <- m5_maize_model$draws("prob_sham_vs_control_positive", format = "draws_matrix") %>%
+    colMeans()
+
+# Stack the three contrasts in a single faceted plot
+pd_long <- tibble::tibble(
+    day = rep(c(7, 14, 20, 27), 3),
+    contrast = rep(c("EMF vs Control", "EMF vs Sham", "Sham vs Control"), each = 4),
+    pd = c(pd_emf_control, pd_emf_sham, pd_sham_control)
+    )
+
+pd_long <- pd_long %>%
+    mutate(direction = ifelse(pd > 0.5, "positive", "negative"))
+
+ggplot(pd_long, aes(x = factor(day), y = pd)) +
+    geom_segment(aes(
+        xend = factor(day), 
+        y = 0.5, 
+        yend = pd, 
+        color = pd),
+        linewidth = 6
+    ) +
+    geom_point(aes(color = pd), size = 3) +
+    geom_hline(yintercept = 0.5, color = "gray50", linewidth = 0.4) +
+    scale_color_gradient2(
+        low = "#D85A30",      
+        mid = "gray80",       
+        high = "#1D9E75",     
+        midpoint = 0.5,
+        limits = c(0, 1)
+    ) +
+    facet_wrap(~ contrast) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(
+        x = "Day", 
+        y = "Posterior probability contrast > 0",
+        title = "Probability-of-direction across all three contrasts"
+    ) +
+    theme_bayes(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+### Effect posterior vs. Region Of Practical Equivalence 
+```{r}
+# Pull the actual contrast draws (not just the ROPE indicator)
+contrast_draws <- m5_maize_model$draws("log_diff_emf_vs_control", format = "draws_matrix")
+
+# For each day (column), compute the three regions
+rope_summary <- tibble::tibble(
+    day = c(7, 14, 20, 27),
+    below = colMeans(contrast_draws < -0.05),
+    in_rope = colMeans(abs(contrast_draws) < 0.05),
+    above = colMeans(contrast_draws > 0.05)
+) %>%
+    tidyr::pivot_longer(c(below, in_rope, above), names_to = "region", values_to = "prob") |>
+    dplyr::mutate(region = factor(region, levels = c("below", "in_rope", "above")))
+
+ggplot(rope_summary, aes(x = factor(day), y = prob, fill = region)) +
+    geom_col(width = 0.7) +
+    scale_fill_manual(
+        values = c(
+            below   = "#D85A30",   # coral: effect clearly negative
+            in_rope = "gray70",      # gray: effectively null
+            above   = "#1D9E75"    # teal: effect clearly positive
+        ),
+        labels = c("< -ROPE", "in ROPE", "> +ROPE")
+    ) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(
+        x = "Day",
+        y = "Posterior probability",
+        fill = "Region",
+        title = "EMF vs Control: posterior mass by region (ROPE = ±0.05 log-units)"
+    ) +
+    theme_bayes(base_size = 14)
+
+```
+
+###  Variance decomposition
+
+#### R2
+```{r}
+full_r2 <- plot_param_halfeye(
+    model = m5_maize_model,
+    pars  = c("bayes_R2_full"),
+    labels = c("bayes_R2_full" = "Bayesian R2 Full Model"),
+    null_line = 0.684
+) + labs(
+    title = "Bayesian Full Model R2",
+    x = "R2"
+    )
+
+population_r2 <- plot_param_halfeye(
+    model = m5_maize_model,
+    pars  = c("bayes_R2_population"),
+    labels = c("bayes_R2_population" = "Bayesian Population R2 Model"),
+    null_line = 0.669
+) + labs(
+    title = "Bayesian Population Model R2",
+    x = "R2"
+    )
+
+contribution_r2 <- plot_param_halfeye(
+    model = m5_maize_model,
+    pars  = c("bayes_R2_pot_contribution"),
+    labels = c("bayes_R2_pot_contribution" = "Bayesian Pot Contribution R2 Model"),
+    null_line = 0.0149
+) + labs(
+    title = "Bayesian Pot Contribution Model R2",
+    x = "R2")
+
+(full_r2 + population_r2) / contribution_r2 +
+    plot_annotation(
+        title = "Bayesian R2 Variance Decomposition",
+        theme = theme(
+            plot.title = element_text(
+                size = 20,
+                face = "bold",
+                hjust = 0.5
+            ) 
+        ) 
+    ) 
+
+```
+
+### Variance decomposition across hierarchical levels
+```{r}
+plot_variance_decomposition(
+    model = m5_maize_model,
+    sd_vars = c(
+        "Between pots (Control)" = "zeta_t[1]",
+        "Between pots (Sham)"    = "zeta_t[2]", 
+        "Between pots (EMF)"     = "zeta_t[3]",
+        "Within pots, day 7"     = "sigma_d[1]",
+        "Within pots, day 14"    = "sigma_d[2]",
+        "Within pots, day 20"    = "sigma_d[3]",
+        "Within pots, day 27"    = "sigma_d[4]"
+    )
+) + labs(
+    title = "Variance Decomposition Within pots and Between Pots",
+    x = "Proportion of Total Variance"
+    )+ theme(
+        plot.title = element_text(
+            size = 20, 
+            face = "bold",
+            hjust = 0.5
+        ),
+        plot.subtitle = element_blank()
+    )
+```
+
+
+# Hierarchical Gompertz, per-pot curves pooled within treatment 
 
 ## Model Diagnostics
 
@@ -209,58 +418,49 @@ high or low ranks. With a model this simple the posterior geometry is trivial an
 mixing is essentially perfect.
 
 ```{r}
-plot_rank(model = m2_maize_model)
+plot_rank(model = m6_maize_model)
 ```
 
-`cmdstan_diagnose()` reported no problems: no divergences, treedepth and E-BFMI 
-satisfactory, R-hat and ESS within thresholds for every parameter. The ESS plots 
-below appear to alarm visually but the numerical thresholds are not violated — 
-bulk-ESS and tail-ESS for every model parameter are in the thousands (out of 4000 
-post-warmup draws), and every R-hat rounds to 1.00. The colour-banding crosses 0.5 
-at the dramatic-looking boundary but the meaningful danger threshold is 0.1.
-
 ```{r}
-m2_r_hat    <- plot_rhat(model = m2_maize_model)
-m2_ess_tail <- plot_ess(model = m2_maize_model, type = "tail")
-m2_ess_bulk <- plot_ess(model = m2_maize_model, type = "bulk")
+m6_r_hat    <- plot_rhat(model = m6_maize_model)
+m6_ess_tail <- plot_ess(model = m6_maize_model, type = "tail")
+m6_ess_bulk <- plot_ess(model = m6_maize_model, type = "bulk")
 
-(m2_ess_tail + m2_ess_bulk) / m2_r_hat +
+(m6_ess_tail + m6_ess_bulk) / m6_r_hat +
     plot_annotation(
-        title = "Effective Sample Size and R-hats — Simple Maize Model",
+        title = "Effective Sample Size and R-hats — M6 Maize Model",
         theme = theme(plot.title = element_text(size = 20))
     )
 ```
 
-**Sampler verdict: clean.** Any failure we see below is a model-specification 
-issue, not an MCMC issue.
 
 ### Prior Predictive Checks
 
 ```{r}
-m2_pr_dens <- plot_prior_predictive_dens(
-    model         = m2_maize_model_pp,
+m6_pr_dens <- plot_prior_predictive_dens(
+    model         = m6_maize_model_pp,
     yrep_var      = "h_rep",
     y             = model_data_maize_heigh$plant_height,
     outcome_label = "Maize Height"
-)
+) + coord_cartesian(xlim = c(0, 200))
 
-m2_pr_mean <- plot_prior_predictive_stat(
-    model         = m2_maize_model_pp,
+m6_pr_mean <- plot_prior_predictive_stat(
+    model         = m6_maize_model_pp,
     yrep_var      = "h_rep",
     y             = model_data_maize_heigh$plant_height,
     outcome_label = "Maize Height",
     stat          = "mean"
-)
+) + coord_cartesian(xlim = c(15, 35))
 
-m2_pr_sd <- plot_prior_predictive_stat(
-    model         = m2_maize_model_pp,
+m6_pr_sd <- plot_prior_predictive_stat(
+    model         = m6_maize_model_pp,
     yrep_var      = "h_rep",
     y             = model_data_maize_heigh$plant_height,
     outcome_label = "Maize Height",
     stat          = "sd"
-)
+) + coord_cartesian(xlim = c(10, 25))
 
-(m2_pr_mean + m2_pr_sd) / m2_pr_dens +
+(m6_pr_mean + m6_pr_sd) / m6_pr_dens +
     plot_annotation(
         title = "Prior Predictive Density and Summary Statistics",
         theme = theme(plot.title = element_text(size = 20))
@@ -269,327 +469,169 @@ m2_pr_sd <- plot_prior_predictive_stat(
 
 ### Posterior Predictive Checks
 
-This is where M1.1 fails — exactly as the modelling ladder predicted. Three 
-independent symptoms, all pointing at the same cause:
-
-1. **Density (bottom panel).** The observed distribution is clearly **bimodal**: 
-   two humps, corresponding to small early-day plants and tall late-day plants 
-   piled into the same marginal. Every posterior replicate is a smooth 
-   single-mode lognormal. M1.1 has no day parameter, so it cannot reproduce 
-   the bimodal structure in principle.
-2. **SD test statistic.** The posterior predictive SD is centred around 17 cm 
-   while the observed SD is 13 cm — the model over-predicts spread because 
-   `σ` is being forced wide enough to absorb day-7-to-day-27 growth as if it 
-   were within-group noise.
-3. **Posterior predictive tail (not shown — visible by inspecting `range(h_rep)`).** 
-   With `σ ≈ 0.62` on the log scale, the right tail of the lognormal is 
-   heavy enough to produce occasional draws orders of magnitude larger than 
-   any real maize plant. This is the model being internally consistent with a 
-   parameter value that was itself forced wrong by the missing day structure.
-
-All three symptoms have the same root cause: M1.1 absorbs between-day 
-variation into within-group variation. The fix is structural, not 
-likelihood-side — adding day to the mean function (M1.2) is predicted to 
-collapse `σ`, eliminate the heavy tail, and at least partially recover the 
-bimodality. That prediction is the validation criterion for M1.2.
-
 ```{r}
-m2_ppc_dens <- plot_ppc_dens(
-    model         = m2_maize_model,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height"
-)
-
-m2_ppc_mean <- plot_ppc_stat(
-    model    = m2_maize_model,
-    yrep_var = "h_rep",
-    y        = model_data_maize_heigh$plant_height,
-    stat     = "mean"
-) + coord_cartesian(xlim = c(15, 35))
-
-m2_ppc_sd <- plot_ppc_stat(
-    model    = m2_maize_model,
-    yrep_var = "h_rep",
-    y        = model_data_maize_heigh$plant_height,
-    stat     = "sd"
-) + coord_cartesian(xlim = c(10, 25))
-
-(m2_ppc_mean + m2_ppc_sd) / m2_ppc_dens +
-    plot_annotation(
-        title = "Posterior Predictive Density and Summary Statistics",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-# M3 — Pot × Day
-
-## Model Diagnostics
-
-### MCMC Sampler Diagnostics
-
-Trace ranks should look uniform across chains — no chain occupying systematically 
-high or low ranks. With a model this simple the posterior geometry is trivial and 
-mixing is essentially perfect.
-
-```{r}
-plot_rank(model = m3_maize_model)
-```
-
-`cmdstan_diagnose()` reported no problems: no divergences, treedepth and E-BFMI 
-satisfactory, R-hat and ESS within thresholds for every parameter. The ESS plots 
-below appear to alarm visually but the numerical thresholds are not violated — 
-bulk-ESS and tail-ESS for every model parameter are in the thousands (out of 4000 
-post-warmup draws), and every R-hat rounds to 1.00. The colour-banding crosses 0.5 
-at the dramatic-looking boundary but the meaningful danger threshold is 0.1.
-
-```{r}
-m3_r_hat    <- plot_rhat(model = m3_maize_model)
-m3_ess_tail <- plot_ess(model = m3_maize_model, type = "tail")
-m3_ess_bulk <- plot_ess(model = m3_maize_model, type = "bulk")
-
-(m3_ess_tail + m3_ess_bulk) / m3_r_hat +
-    plot_annotation(
-        title = "Effective Sample Size and R-hats — M3 Maize Model",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-**Sampler verdict: clean.** Any failure we see below is a model-specification 
-issue, not an MCMC issue.
-
-### Prior Predictive Checks
-
-```{r}
-m3_pr_dens <- plot_prior_predictive_dens(
-    model         = m3_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height"
-)
-
-m3_pr_mean <- plot_prior_predictive_stat(
-    model         = m3_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
-    stat          = "mean"
-)
-
-m3_pr_sd <- plot_prior_predictive_stat(
-    model         = m3_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
-    stat          = "sd"
-)
-
-(m3_pr_mean + m3_pr_sd) / m3_pr_dens +
-    plot_annotation(
-        title = "Prior Predictive Density and Summary Statistics",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-### Posterior Predictive Checks
-
-This is where M1.1 fails — exactly as the modelling ladder predicted. Three 
-independent symptoms, all pointing at the same cause:
-
-1. **Density (bottom panel).** The observed distribution is clearly **bimodal**: 
-   two humps, corresponding to small early-day plants and tall late-day plants 
-   piled into the same marginal. Every posterior replicate is a smooth 
-   single-mode lognormal. M1.1 has no day parameter, so it cannot reproduce 
-   the bimodal structure in principle.
-2. **SD test statistic.** The posterior predictive SD is centred around 17 cm 
-   while the observed SD is 13 cm — the model over-predicts spread because 
-   `σ` is being forced wide enough to absorb day-7-to-day-27 growth as if it 
-   were within-group noise.
-3. **Posterior predictive tail (not shown — visible by inspecting `range(h_rep)`).** 
-   With `σ ≈ 0.62` on the log scale, the right tail of the lognormal is 
-   heavy enough to produce occasional draws orders of magnitude larger than 
-   any real maize plant. This is the model being internally consistent with a 
-   parameter value that was itself forced wrong by the missing day structure.
-
-All three symptoms have the same root cause: M1.1 absorbs between-day 
-variation into within-group variation. The fix is structural, not 
-likelihood-side — adding day to the mean function (M1.2) is predicted to 
-collapse `σ`, eliminate the heavy tail, and at least partially recover the 
-bimodality. That prediction is the validation criterion for M1.2.
-
-```{r}
-m3_ppc_dens <- plot_ppc_dens(
-    model         = m3_maize_model,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height"
-)
-
-m3_ppc_mean <- plot_ppc_stat(
-    model    = m3_maize_model,
-    yrep_var = "h_rep",
-    y        = model_data_maize_heigh$plant_height,
-    stat     = "mean"
-) + coord_cartesian(xlim = c(15, 35))
-
-m3_ppc_sd <- plot_ppc_stat(
-    model    = m3_maize_model,
-    yrep_var = "h_rep",
-    y        = model_data_maize_heigh$plant_height,
-    stat     = "sd"
-) + coord_cartesian(xlim = c(10, 25))
-
-(m3_ppc_mean + m3_ppc_sd) / m3_ppc_dens +
-    plot_annotation(
-        title = "Posterior Predictive Density and Summary Statistics",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-```{r}
-pot_medians <- m3_maize_model$summary("alpha") |>
-  mutate(
-    # parse out pot and day indices from the variable name "alpha[p,d]"
-    pot_id = as.integer(stringr::str_extract(variable, "(?<=\\[)\\d+")),
-    day    = as.integer(stringr::str_extract(variable, "(?<=,)\\d+(?=\\])")),
-    treatment = case_when(
-      pot_id <= 6  ~ "Control",
-      pot_id <= 10 ~ "Sham",
-      TRUE         ~ "EMF"
-    )
-  )
-
-ggplot(pot_medians, aes(x = factor(day, labels = c("7","14","20","27")), 
-                         y = median, color = treatment)) +
-  geom_point(position = position_jitter(width = 0.15, height = 0), size = 2.5, alpha = 0.8) +
-  geom_linerange(aes(ymin = q5, ymax = q95), 
-                 position = position_jitter(width = 0.15, height = 0), alpha = 0.5) +
-  labs(x = "Day", y = "log-median height (cm)",
-       title = "Per-pot posterior medians by treatment and day",
-       subtitle = "Each point is one pot; vertical bars are 90% CI") +
-  theme_minimal()
-```
-
-# M4 Gompertz per treatment 
-
-## Model Diagnostics
-
-### MCMC Sampler Diagnostics
-
-Trace ranks should look uniform across chains — no chain occupying systematically 
-high or low ranks. With a model this simple the posterior geometry is trivial and 
-mixing is essentially perfect.
-
-```{r}
-plot_rank(model = m4_maize_model)
-```
-
-`cmdstan_diagnose()` reported no problems: no divergences, treedepth and E-BFMI 
-satisfactory, R-hat and ESS within thresholds for every parameter. The ESS plots 
-below appear to alarm visually but the numerical thresholds are not violated — 
-bulk-ESS and tail-ESS for every model parameter are in the thousands (out of 4000 
-post-warmup draws), and every R-hat rounds to 1.00. The colour-banding crosses 0.5 
-at the dramatic-looking boundary but the meaningful danger threshold is 0.1.
-
-```{r}
-m4_r_hat    <- plot_rhat(model = m4_maize_model)
-m4_ess_tail <- plot_ess(model = m4_maize_model, type = "tail")
-m4_ess_bulk <- plot_ess(model = m4_maize_model, type = "bulk")
-
-(m4_ess_tail + m4_ess_bulk) / m4_r_hat +
-    plot_annotation(
-        title = "Effective Sample Size and R-hats — M4 Maize Model",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-**Sampler verdict: clean.** Any failure we see below is a model-specification 
-issue, not an MCMC issue.
-
-### Prior Predictive Checks
-
-```{r}
-m4_pr_dens <- plot_prior_predictive_dens(
-    model         = m4_maize_model_pp,
+m6_ppc_dens <- plot_ppc_dens(
+    model         = m6_maize_model,
     yrep_var      = "h_rep",
     y             = model_data_maize_heigh$plant_height,
     outcome_label = "Maize Height"
 ) + coord_cartesian(xlim = c(0, 80))
 
-m4_pr_mean <- plot_prior_predictive_stat(
-    model         = m4_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
-    stat          = "mean"
-) + coord_cartesian(xlim = c(15, 35))
-
-m4_pr_sd <- plot_prior_predictive_stat(
-    model         = m4_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
-    stat          = "sd"
-) + coord_cartesian(xlim = c(10, 25))
-
-(m4_pr_mean + m4_pr_sd) / m4_pr_dens +
-    plot_annotation(
-        title = "Prior Predictive Density and Summary Statistics",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-### Posterior Predictive Checks
-
-This is where M1.1 fails — exactly as the modelling ladder predicted. Three 
-independent symptoms, all pointing at the same cause:
-
-1. **Density (bottom panel).** The observed distribution is clearly **bimodal**: 
-   two humps, corresponding to small early-day plants and tall late-day plants 
-   piled into the same marginal. Every posterior replicate is a smooth 
-   single-mode lognormal. M1.1 has no day parameter, so it cannot reproduce 
-   the bimodal structure in principle.
-2. **SD test statistic.** The posterior predictive SD is centred around 17 cm 
-   while the observed SD is 13 cm — the model over-predicts spread because 
-   `σ` is being forced wide enough to absorb day-7-to-day-27 growth as if it 
-   were within-group noise.
-3. **Posterior predictive tail (not shown — visible by inspecting `range(h_rep)`).** 
-   With `σ ≈ 0.62` on the log scale, the right tail of the lognormal is 
-   heavy enough to produce occasional draws orders of magnitude larger than 
-   any real maize plant. This is the model being internally consistent with a 
-   parameter value that was itself forced wrong by the missing day structure.
-
-All three symptoms have the same root cause: M1.1 absorbs between-day 
-variation into within-group variation. The fix is structural, not 
-likelihood-side — adding day to the mean function (M1.2) is predicted to 
-collapse `σ`, eliminate the heavy tail, and at least partially recover the 
-bimodality. That prediction is the validation criterion for M1.2.
-
-```{r}
-m4_ppc_dens <- plot_ppc_dens(
-    model         = m4_maize_model,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height"
-) + coord_cartesian(xlim = c(0, 80))
-
-m4_ppc_mean <- plot_ppc_stat(
-    model    = m4_maize_model,
+m6_ppc_mean <- plot_ppc_stat(
+    model    = m6_maize_model,
     yrep_var = "h_rep",
     y        = model_data_maize_heigh$plant_height,
     stat     = "mean"
 ) + coord_cartesian(xlim = c(15, 35))
 
-m4_ppc_sd <- plot_ppc_stat(
-    model    = m4_maize_model,
+m6_ppc_sd <- plot_ppc_stat(
+    model    = m6_maize_model,
     yrep_var = "h_rep",
     y        = model_data_maize_heigh$plant_height,
     stat     = "sd"
 ) + coord_cartesian(xlim = c(10, 25))
 
-(m4_ppc_mean + m4_ppc_sd) / m4_ppc_dens +
+(m6_ppc_mean + m5_ppc_sd) / m6_ppc_dens +
     plot_annotation(
         title = "Posterior Predictive Density and Summary Statistics",
         theme = theme(plot.title = element_text(size = 20))
     )
+```
+
+## Population-level natural-scale parameters
+```{r}
+a <- plot_coef_forest(
+    model = m6_maize_model,
+    pars = c(
+        "A_p[1]","A_p[2]","A_p[3]","A_p[4]","A_p[5]",
+        "A_p[6]","A_p[7]","A_p[8]","A_p[9]","A_p[10]",
+        "A_p[11]","A_p[12]","A_p[13]","A_p[14]","A_p[14]","A_p[15]",
+        "A_p[16]"
+    ),
+    labels = c(
+        "A_p[1]" = "Control Pot 1","A_p[2]" = "Control Pot 2","A_p[3]" = "Control Pot 3",
+        "A_p[4]" = "Control Pot 4","A_p[5]" = "Control Pot 5","A_p[6]" = "Control Pot 6",
+        "A_p[7]" = "Sham Pot 1","A_p[8]" = "Sham Pot 2","A_p[9]" = "Sham Pot 3",
+        "A_p[10]" = "Sham Pot 4","A_p[11]" = "Sham Pot 5", 
+        "A_p[12]" = "EMS Pot 1","A_p[13]" = "EMS Pot 2","A_p[14]" = "EMS Pot 3",
+        "A_p[14]" = "EMS Pot 4","A_p[15]" = "EMS Pot 5","A_p[16]" = "EMS Pot 6"
+        ),
+    null_line = 39.8,
+    sort = TRUE
+    ) + labs(
+        title = "Posterior Coefficient of the Golmez Asymptote",
+        x     = "Posterior Asymptote",
+    ) +
+    theme(
+        plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
+)
+
+k <- plot_coef_forest(
+    model = m6_maize_model,
+    pars = c(
+        "K_p[1]","K_p[2]","K_p[3]","K_p[4]","K_p[5]",
+        "K_p[6]","K_p[7]","K_p[8]","K_p[9]","K_p[10]",
+        "K_p[11]","K_p[12]","K_p[13]","K_p[14]","K_p[14]","K_p[15]",
+        "K_p[16]"
+    ),
+    labels = c(
+        "K_p[1]" = "Control Pot 1","K_p[2]" = "Control Pot 2","K_p[3]" = "Control Pot 3",
+        "K_p[4]" = "Control Pot 4","K_p[5]" = "Control Pot 5","K_p[6]" = "Control Pot 6",
+        "K_p[7]" = "Sham Pot 1","K_p[8]" = "Sham Pot 2","K_p[9]" = "Sham Pot 3",
+        "K_p[10]" = "Sham Pot 4","K_p[11]" = "Sham Pot 5", 
+        "K_p[12]" = "EMS Pot 1","K_p[13]" = "EMS Pot 2","K_p[14]" = "EMS Pot 3",
+        "K_p[14]" = "EMS Pot 4","K_p[15]" = "EMS Pot 5","K_p[16]" = "EMS Pot 6"
+        ),
+    null_line = 0.143,
+    sort = TRUE
+    ) + labs(
+        title = "Posterior Coefficient of the Golmez Growth Rate ",
+        x     = "Posterior Growth rate level ",
+    ) +
+    theme(
+        plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
+)
+
+tau <- plot_coef_forest(
+    model = m6_maize_model,
+    pars = c(
+        "tau_p[1]","tau_p[2]","tau_p[3]","tau_p[4]","tau_p[5]",
+        "tau_p[6]","tau_p[7]","tau_p[8]","tau_p[9]","tau_p[10]",
+        "tau_p[11]","tau_p[12]","tau_p[13]","tau_p[14]","tau_p[14]","tau_p[15]",
+        "tau_p[16]"
+    ),
+    labels = c(
+        "tau_p[1]" = "Control Pot 1","tau_p[2]" = "Control Pot 2","tau_p[3]" = "Control Pot 3",
+        "tau_p[4]" = "Control Pot 4","tau_p[5]" = "Control Pot 5","tau_p[6]" = "Control Pot 6",
+        "tau_p[7]" = "Sham Pot 1","tau_p[8]" = "Sham Pot 2","tau_p[9]" = "Sham Pot 3",
+        "tau_p[10]" = "Sham Pot 4","tau_p[11]" = "Sham Pot 5", 
+        "tau_p[12]" = "EMS Pot 1","tau_p[13]" = "EMS Pot 2","tau_p[14]" = "EMS Pot 3",
+        "tau_p[14]" = "EMS Pot 4","tau_p[15]" = "EMS Pot 5","tau_p[16]" = "EMS Pot 6"
+        ),
+    null_line = 8.74,
+    sort = TRUE
+    ) + labs(
+        title = "Posterior Coefficient of the Golmez Inflection point",
+        x     = "Posterior Inflection point",
+    ) +
+    theme(
+        plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
+)
+
+(a + k) / tau +
+    plot_annotation(
+        title = "Golmez Equation Posterior Paramters per Pot",
+        theme = theme(
+            plot.title = element_text(size = 20,face = "bold", hjust = 0.5
+        )
+    )
+)
+``` 
+
+## Pairwise contrasts
+```{r}
+a <- plot_param_halfeye(
+    model = m6_maize_model,
+    pars = c("log_A_emf_vs_control"),
+    labels = c("log_A_emf_vs_control" = "Golmez Asymptote")
+) + labs(
+        title = "Log Difference EMF - Control" 
+    )+
+    theme(
+        plot.title = element_text(size = 10, face = "bold",hjust = 0.5)
+)
+
+k <- plot_param_halfeye(
+    model = m6_maize_model,
+    pars = c("log_K_emf_vs_control"),
+    labels = c("log_K_emf_vs_control" = "Golmez Growth Rate")
+) + labs(
+        title = "Log Difference EMF - Control" 
+    )+
+    theme(
+        plot.title = element_text(size = 10, face = "bold",hjust = 0.5)
+)
+
+tau <- plot_param_halfeye(
+    model = m6_maize_model,
+    pars = c("tau_emf_vs_control"),
+    labels = c("tau_emf_vs_control" = "Golmez Inflection point")
+) + labs(
+        title = "Difference EMF - Control" 
+    )+
+    theme(
+        plot.title = element_text(size = 10, face = "bold",hjust = 0.5)
+)
+
+(a + k + tau) + 
+    plot_annotation(
+        title = "Posterior Contrast of the Golmez Parameters",
+        theme = theme(
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+        )
+    )
+```
+
+## Probability-of-direction indicators
+```{r}
 ```
