@@ -1,0 +1,23 @@
+/* =============================================================================
+   diagnostics.stanfunctions
+   -----------------------------------------------------------------------------
+   Generated-quantities helpers for posterior predictive checking and calibration.
+
+       #include lib/diagnostics.stanfunctions
+   ============================================================================= */
+
+// ---- Residuals --------------------------------------------------------------
+vector pearson_residuals_lognorm(vector y, vector mu, vector sigma) {
+    // y on cm scale, mu on cm scale (NOT log), sigma per-observation
+    int N = num_elements(y);
+    vector[N] r;
+    for (n in 1:N) r[n] = (log(y[n]) - log(mu[n])) / sigma[n];
+    return r;
+}
+
+vector lognormal_pit(vector y, vector mu, vector sigma) {
+    int N = num_elements(y);
+    vector[N] u;
+    for (n in 1:N) u[n] = normal_cdf(log(y[n]) | log(mu[n]), sigma[n]);
+    return u;
+}
