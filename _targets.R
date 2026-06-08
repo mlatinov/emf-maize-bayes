@@ -19,40 +19,38 @@ list(
     name = model_data_maize_heigh,
     command = clean_meize_raw(maize_heigh_raw)
   ),
-  # Fit the Stan model Plant Height ~ Treatment Model M1
+  ## Hierarchical cell-means, pots pooled within treatment ##
   tar_target(
-    name = m1_maize_model,
-    command = m1_stan_model(model_data_maize_heigh, prior_only = 0)
+    name = m5_recovery_data,
+    command = maize_h_m5_dgp(n = 700)
   ),
   tar_target(
-    name = m1_maize_model_pp,
-    command = m1_stan_model(model_data_maize_heigh, prior_only = 1)
-  ),
-  # Fit the Stan model Plant Height ~ Treatment x Day Model M2
-  tar_target(
-    name = m2_maize_model,
-    command = m2_stan_model(model_data_maize_heigh, prior_only = 0)
+    name = m5_recovery_check,
+    command = m5_stan_model(m5_recovery_data$data, prior_only = 0)
   ),
   tar_target(
-    name = m2_maize_model_pp,
-    command = m2_stan_model(model_data_maize_heigh, prior_only = 1)
-  ),
-  # Fit the Stan model Plant Height ~ Pot x Day Model M3
-  tar_target(
-    name = m3_maize_model,
-    command = m3_stan_model(model_data_maize_heigh, prior_only = 0)
+    name = m5_maize_model,
+    command = m5_stan_model(model_data_maize_heigh, prior_only = 0)
   ),
   tar_target(
-    name = m3_maize_model_pp,
-    command = m3_stan_model(model_data_maize_heigh, prior_only = 1)
+    name = m5_maize_model_pp,
+    command = m5_stan_model(model_data_maize_heigh, prior_only = 1)
   ),
-  ## M4 Gompertz per treatment ##
+  ## Hierarchical Gompertz, per-pot curves pooled within treatment ##
   tar_target(
-    name = m4_maize_model,
-    command = m4_stan_model(model_data_maize_heigh, prior_only = 0)
+    name = m6_recovery_data,
+    command = maize_h_m6_dgp(n = 700)
   ),
   tar_target(
-    name = m4_maize_model_pp,
-    command = m4_stan_model(model_data_maize_heigh, prior_only = 1)
+    name = m6_recovery_check,
+    command = m6_stan_model(m6_recovery_data$data, prior_only = 0)
+  ),
+  tar_target(
+    name = m6_maize_model,
+    command = m6_stan_model(model_data_maize_heigh, prior_only = 0)
+  ),
+  tar_target(
+    name = m6_maize_model_pp,
+    command = m6_stan_model(model_data_maize_heigh, prior_only = 1)
   )
 )
