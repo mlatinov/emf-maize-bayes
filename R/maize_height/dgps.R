@@ -152,8 +152,8 @@ maize_h_m5_dgp <- function(
   gen_data <- tibble(
     treatment = treatment,
     day_idx   = day_idx,
-    pot_idx   = pot_idx,
-    height    = height
+    pot_id    = pot_idx,
+    plant_height = height
   )
 
   # Paramtemers 
@@ -186,7 +186,7 @@ maize_h_m6_dgp <- function(
   # Pot-scatter SDs 
   xi_A_t    = c(0.05, 0.06, 0.05),
   xi_K_t    = c(0.10, 0.10, 0.10),
-  xi_tau_t  = c(0.50, 0.50, 0.50),
+  xi_tau_t  = c(0.1, 0.1, 0.1),
   
   # Per-day residual SD 
   sigma_d   = c(0.47, 0.34, 0.32, 0.24)
@@ -219,7 +219,7 @@ maize_h_m6_dgp <- function(
   height <- rlnorm(n = n, meanlog = log(mu_i), sdlog = sigma_d[day_idx])
   
   # Return data
-  list(
+  return(list(
     data = tibble::tibble(
       day_idx      = day_idx,
       day          = day,
@@ -233,7 +233,7 @@ maize_h_m6_dgp <- function(
       sigma_d = sigma_d,
       log_A_p = log_A_p, log_K_p = log_K_p, tau_p = tau_p
     )
-  )
+  ))
 }
 
 
