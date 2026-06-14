@@ -2,6 +2,7 @@
 ## Workflow Orchestration 
 library(targets)
 library(tidyverse)
+library(tarchetypes)
 library(cmdstanr)
 
 ## Soruce Functions ##
@@ -52,5 +53,11 @@ list(
   tar_target(
     name = m6_maize_model_pp,
     command = m6_stan_model(model_data_maize_heigh, prior_only = 1)
+  ), 
+  ## Quatro Report 
+  tar_quarto(
+    name = maize_height_quatro_report,
+    path = "analysis/maize_height.qmd",
+    quiet = FALSE 
   )
 )
