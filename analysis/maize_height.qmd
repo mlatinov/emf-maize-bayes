@@ -1,6 +1,6 @@
 ---
-title: "Maize Height Models Checks"
-subtitle: "Comparison Between Different Maize Models"
+title: "Maize Height Models"
+subtitle: "Different Maize Models"
 author: "Metodi Latinov"
 date: today
 format:
@@ -51,58 +51,7 @@ tar_load(m6_maize_model_pp)
 
 # Hierarchical cell-means pots pooled within treatment 
 
-## Model Diagnostics
-
-### MCMC Sampler Diagnostics
-
-```{r}
-plot_rank(model = m5_maize_model)
-```
-
-```{r}
-m5_r_hat    <- plot_rhat(model = m5_maize_model)
-m5_ess_tail <- plot_ess(model = m5_maize_model, type = "tail")
-m5_ess_bulk <- plot_ess(model = m5_maize_model, type = "bulk")
-
-(m5_ess_tail + m5_ess_bulk) / m5_r_hat +
-    plot_annotation(
-        title = "Effective Sample Size and R-hats — M5 Maize Model",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-### Prior Predictive Checks
-
-```{r}
-m5_pr_dens <- plot_ppc_dens(
-    model         = m5_maize_model_pp,
-    yrep_var      = "h_rep",
-    outcome_label = "Maize Height",
-    y             = model_data_maize_heigh$plant_height,
-) + coord_cartesian(xlim = c(0, 80))
-
-m5_pr_mean <- plot_ppc_stat(
-    model         = m5_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    stat          = "mean"
-) + coord_cartesian(xlim = c(15, 35))
-
-m5_pr_sd <- plot_ppc_stat(
-    model         = m5_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    stat          = "sd"
-) + coord_cartesian(xlim = c(10, 25))
-
-(m5_pr_mean + m5_pr_sd) / m5_pr_dens +
-    plot_annotation(
-        title = "Prior Predictive Density and Summary Statistics",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-### Posterior Predictive Checks
+## Posterior Predictive Checks
 
 ```{r}
 m5_ppc_dens <- plot_ppc_by_group(
@@ -134,7 +83,7 @@ m5_ppc_sd <- plot_ppc_stat(
     )
 ```
 
-### Predictive error scatter
+## Predictive error scatter
 ```{r}
 plot_ppc_error_scatter(
     model = m5_maize_model,
@@ -406,68 +355,9 @@ plot_variance_decomposition(
     )
 ```
 
-
 # Hierarchical Gompertz, per-pot curves pooled within treatment 
 
-## Model Diagnostics
-
-### MCMC Sampler Diagnostics
-
-Trace ranks should look uniform across chains — no chain occupying systematically 
-high or low ranks. With a model this simple the posterior geometry is trivial and 
-mixing is essentially perfect.
-
-```{r}
-plot_rank(model = m6_maize_model)
-```
-
-```{r}
-m6_r_hat    <- plot_rhat(model = m6_maize_model)
-m6_ess_tail <- plot_ess(model = m6_maize_model, type = "tail")
-m6_ess_bulk <- plot_ess(model = m6_maize_model, type = "bulk")
-
-(m6_ess_tail + m6_ess_bulk) / m6_r_hat +
-    plot_annotation(
-        title = "Effective Sample Size and R-hats — M6 Maize Model",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-
-### Prior Predictive Checks
-
-```{r}
-m6_pr_dens <- plot_prior_predictive_dens(
-    model         = m6_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height"
-) + coord_cartesian(xlim = c(0, 200))
-
-m6_pr_mean <- plot_prior_predictive_stat(
-    model         = m6_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
-    stat          = "mean"
-) + coord_cartesian(xlim = c(15, 35))
-
-m6_pr_sd <- plot_prior_predictive_stat(
-    model         = m6_maize_model_pp,
-    yrep_var      = "h_rep",
-    y             = model_data_maize_heigh$plant_height,
-    outcome_label = "Maize Height",
-    stat          = "sd"
-) + coord_cartesian(xlim = c(10, 25))
-
-(m6_pr_mean + m6_pr_sd) / m6_pr_dens +
-    plot_annotation(
-        title = "Prior Predictive Density and Summary Statistics",
-        theme = theme(plot.title = element_text(size = 20))
-    )
-```
-
-### Posterior Predictive Checks
+## Posterior Predictive Checks
 
 ```{r}
 m6_ppc_dens <- plot_ppc_dens(
@@ -498,7 +388,24 @@ m6_ppc_sd <- plot_ppc_stat(
     )
 ```
 
-## Population-level natural-scale parameters
+## Predictive error scatter
+```{r}
+plot_ppc_error_scatter(
+    model = m6_maize_model,
+    y = model_data_maize_heigh$plant_height,
+    yrep_var = "h_rep",
+    x_label = "Plant Height"
+) + labs(
+        title = "Posterior Predictive Errors",
+        y     = "Predicted Error = Y - E[Y_rep]") +
+    theme(
+        plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+    )
+```
+
+## Infrence 
+
+### Population-level natural-scale parameters
 ```{r}
 a <- plot_coef_forest(
     model = m6_maize_model,
@@ -588,7 +495,7 @@ tau <- plot_coef_forest(
 )
 ``` 
 
-## Pairwise contrasts
+### Pairwise contrasts
 ```{r}
 a <- plot_param_halfeye(
     model = m6_maize_model,
@@ -632,6 +539,232 @@ tau <- plot_param_halfeye(
     )
 ```
 
-## Probability-of-direction indicators
+### Probability-of-direction indicators 
 ```{r}
+# Pull the three probability-of-direction indicators
+pd_A <- m6_maize_model$draws("prob_log_A_emf_vs_control_positive", format = "draws_matrix") |>
+    mean()
+pd_K <- m6_maize_model$draws("prob_log_K_emf_vs_control_positive", format = "draws_matrix") |>
+    mean()
+pd_T <- m6_maize_model$draws("prob_tau_emf_vs_control_positive", format = "draws_matrix") |>
+    mean()
+
+# Build the tibble: one row per contrast
+pd_df <- tibble::tibble(
+    parameter = c("Asymptote (log A)", "Rate (log K)", "Inflection (τ)"),
+    pd = c(pd_A, pd_K, pd_T)
+) |>
+    dplyr::mutate(
+        parameter = factor(parameter, levels = parameter),  # preserve order
+        direction = ifelse(pd > 0.5, "positive", "negative")
+    )
+
+ggplot(pd_df, aes(x = parameter, y = pd)) +
+    geom_segment(
+        aes(xend = parameter, y = 0.5, yend = pd, color = direction),
+        linewidth = 8
+    ) +
+    geom_point(aes(color = direction), size = 4) +
+    geom_hline(yintercept = 0.5, color = "gray50", linewidth = 0.4) +
+    geom_hline(yintercept = c(0.05, 0.95), 
+               linetype = "dashed", color = "gray70", linewidth = 0.3) +
+    scale_color_manual(values = c(
+        "positive" = "#1D9E75",
+        "negative" = "#D85A30"
+    )) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(
+        x = "Gompertz parameter",
+        y = "P(EMF > Control)",
+        title = "Probability-of-direction: EMF vs Control on each curve parameter"
+    ) +
+    theme_bayes(base_size = 14) +
+    theme(legend.position = "none")
+```
+
+### Effect posterior vs. Region Of Practical Equivalence 
+```{r}
+# Pull the three scalar contrast draws
+draws_A <- m6_maize_model$draws("log_A_emf_vs_control", format = "draws_matrix")
+draws_K <- m6_maize_model$draws("log_K_emf_vs_control", format = "draws_matrix")
+draws_T <- m6_maize_model$draws("tau_emf_vs_control",   format = "draws_matrix")
+
+# ROPE widths — different per parameter, matching the scale of each
+rope_A <- 0.05
+rope_K <- 0.10
+rope_T <- 0.5
+
+# Build the region tibble — one row per (parameter × region)
+rope_summary <- tibble::tribble(
+    ~parameter,         ~rope_width, ~below,                   ~in_rope,                          ~above,
+    "Asymptote (log A)", rope_A,     mean(draws_A < -rope_A),  mean(abs(draws_A) < rope_A),       mean(draws_A > rope_A),
+    "Rate (log K)",      rope_K,     mean(draws_K < -rope_K),  mean(abs(draws_K) < rope_K),       mean(draws_K > rope_K),
+    "Inflection (τ)",    rope_T,     mean(draws_T < -rope_T),  mean(abs(draws_T) < rope_T),       mean(draws_T > rope_T)
+) %>%
+    dplyr::mutate(parameter = factor(parameter, levels = parameter)) %>%  # preserve order
+    tidyr::pivot_longer(c(below, in_rope, above),
+                        names_to = "region", values_to = "prob") %>%
+    dplyr::mutate(region = factor(region, levels = c("below", "in_rope", "above")))
+
+ggplot(rope_summary, aes(x = parameter, y = prob, fill = region)) +
+    geom_col(width = 0.7) +
+    scale_fill_manual(
+        values = c(
+            below   = "#D85A30",   # coral: effect clearly negative
+            in_rope = "gray70",    # gray: effectively null
+            above   = "#1D9E75"    # teal: effect clearly positive
+        ),
+        labels = c("< -ROPE", "in ROPE", "> +ROPE")
+    ) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(
+        x = "Gompertz parameter",
+        y = "Posterior probability",
+        fill = "Region",
+        title = "EMF vs Control: posterior mass by region",
+        subtitle = "ROPE widths: log A ±0.05 (~5% asymptote); log K ±0.10 (~10% rate); τ ±0.5 days"
+    ) +
+    theme_bayes(base_size = 14)
+```
+###  Variance decomposition
+
+#### R2
+```{r}
+full_r2 <- plot_param_halfeye(
+    model = m6_maize_model,
+    pars  = c("bayes_R2_full"),
+    labels = c("bayes_R2_full" = "Bayesian R2 Full Model"),
+    null_line = 0.684
+) + labs(
+    title = "Bayesian Full Model R2",
+    x = "R2"
+    )
+
+population_r2 <- plot_param_halfeye(
+    model = m6_maize_model,
+    pars  = c("bayes_R2_population"),
+    labels = c("bayes_R2_population" = "Bayesian Population R2 Model"),
+    null_line = 0.669
+) + labs(
+    title = "Bayesian Population Model R2",
+    x = "R2"
+    )
+
+contribution_r2 <- plot_param_halfeye(
+    model = m6_maize_model,
+    pars  = c("bayes_R2_pot_contribution"),
+    labels = c("bayes_R2_pot_contribution" = "Bayesian Pot Contribution R2 Model"),
+    null_line = 0.0149
+) + labs(
+    title = "Bayesian Pot Contribution Model R2",
+    x = "R2"
+    )
+
+(full_r2 + population_r2) / contribution_r2 +
+    plot_annotation(
+        title = "Bayesian R2 Variance Decomposition",
+        theme = theme(
+            plot.title = element_text(
+                size = 20,
+                face = "bold",
+                hjust = 0.5
+            ) 
+        ) 
+    ) 
+
+```
+
+### Curve Prediction Grid 
+```{r}
+# 1. Extract the grid as a draws array — gets the 3D structure
+mu_grid_draws <- m6_maize_model$draws("mu_pop_grid", format = "draws_array")
+t_grid_values <- m6_maize_model$draws("t_grid", format = "draws_matrix") |>
+    as.numeric() %>%
+    unique()  # All draws have the same t_grid since it's deterministic
+
+# 2. Convert to long tibble: one row per (draw, treatment, time)
+mu_grid_long <- mu_grid_draws %>%
+    posterior::as_draws_df() %>%
+    pivot_longer(
+        starts_with("mu_pop_grid"),
+        names_to = c("treatment", "g"),
+        names_pattern = "mu_pop_grid\\[(\\d+),(\\d+)\\]",
+        values_to = "height"
+    ) %>%
+    mutate(
+        treatment = factor(treatment, 
+                          levels = c("1", "2", "3"),
+                          labels = c("Control", "Sham", "EMF")),
+        g = as.integer(g),
+        t = t_grid_values[g]
+    )
+
+# 3. Summarize per (treatment, t): median + intervals
+curve_summary <- mu_grid_long %>%
+    group_by(treatment, t) %>%
+    summarize(
+        median = median(height),
+        q05 = quantile(height, 0.05),
+        q25 = quantile(height, 0.25),
+        q75 = quantile(height, 0.75),
+        q95 = quantile(height, 0.95),
+        .groups = "drop"
+    )
+
+# 4. Prep the raw data for overlay
+raw_data <- model_data_maize_heigh %>%
+    mutate(treatment = factor(treatment, 
+                              levels = c(1, 2, 3),
+                              labels = c("Control", "Sham", "EMF")))
+
+# 5. Define the palette — distinguishable, color-blind-safe ideally
+treatment_colors <- c(
+    "Control" = "#2E5984",   # blue
+    "Sham"    = "#B8860B",   # ochre
+    "EMF"     = "#7B2D8E"    # purple
+)
+
+# 6. Build the plot
+ggplot() +
+    # Ribbon: 90% credible interval (outer)
+    geom_ribbon(
+        data = curve_summary,
+        aes(x = t, ymin = q05, ymax = q95, fill = treatment),
+        alpha = 0.15
+    ) +
+    # Ribbon: 50% credible interval (inner)
+    geom_ribbon(
+        data = curve_summary,
+        aes(x = t, ymin = q25, ymax = q75, fill = treatment),
+        alpha = 0.25
+    ) +
+    # Median curve
+    geom_line(
+        data = curve_summary,
+        aes(x = t, y = median, color = treatment),
+        linewidth = 1.2
+    ) +
+    # Raw data points, jittered slightly on x to reveal overlapping points
+    geom_jitter(
+        data = raw_data,
+        aes(x = day, y = plant_height, color = treatment),
+        width = 0.3, height = 0,
+        alpha = 0.3, size = 1
+    ) +
+    # Vertical reference lines at measurement days
+    geom_vline(xintercept = c(7, 14, 20, 27), 
+               linetype = "dotted", color = "gray70", linewidth = 0.4) +
+    scale_color_manual(values = treatment_colors) +
+    scale_fill_manual(values = treatment_colors) +
+    scale_x_continuous(breaks = c(0, 7, 14, 20, 27, 35)) +
+    labs(
+        x = "Days from start of experiment",
+        y = "Plant height (cm)",
+        color = "Treatment",
+        fill  = "Treatment",
+        title = "Population-level Gompertz growth curves",
+        subtitle = "Posterior median with 50% and 90% credible intervals; raw plant heights overlaid"
+    ) +
+    theme_bayes(base_size = 14) +
+    theme(legend.position = "bottom")
 ```
