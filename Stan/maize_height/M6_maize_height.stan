@@ -130,9 +130,11 @@ generated quantities {
     int prob_log_A_emf_vs_control_positive  = is_positive(log_A_emf_vs_control);
     int prob_log_A_emf_vs_sham_positive     = is_positive(log_A_emf_vs_sham);
     int prob_log_A_sham_vs_control_positive = is_positive(log_A_sham_vs_control);
+
     int prob_log_K_emf_vs_control_positive  = is_positive(log_K_emf_vs_control);
     int prob_log_K_emf_vs_sham_positive     = is_positive(log_K_emf_vs_sham);
     int prob_log_K_sham_vs_control_positive = is_positive(log_K_sham_vs_control);
+    
     int prob_tau_emf_vs_control_positive    = is_positive(tau_emf_vs_control);
     int prob_tau_emf_vs_sham_positive       = is_positive(tau_emf_vs_sham);
     int prob_tau_sham_vs_control_positive   = is_positive(tau_sham_vs_control);
@@ -141,9 +143,11 @@ generated quantities {
     int rope_log_A_emf_vs_control  = in_rope(log_A_emf_vs_control,  -0.05, 0.05);
     int rope_log_A_emf_vs_sham     = in_rope(log_A_emf_vs_sham,     -0.05, 0.05);
     int rope_log_A_sham_vs_control = in_rope(log_A_sham_vs_control, -0.05, 0.05);
+    
     int rope_log_K_emf_vs_control  = in_rope(log_K_emf_vs_control,  -0.10, 0.10);
     int rope_log_K_emf_vs_sham     = in_rope(log_K_emf_vs_sham,     -0.10, 0.10);
     int rope_log_K_sham_vs_control = in_rope(log_K_sham_vs_control, -0.10, 0.10);
+    
     int rope_tau_emf_vs_control    = in_rope(tau_emf_vs_control,    -0.5,  0.5);
     int rope_tau_emf_vs_sham       = in_rope(tau_emf_vs_sham,       -0.5,  0.5);
     int rope_tau_sham_vs_control   = in_rope(tau_sham_vs_control,   -0.5,  0.5);
