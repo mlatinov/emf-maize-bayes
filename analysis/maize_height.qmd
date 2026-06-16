@@ -35,6 +35,10 @@ library(targets)
 library(patchwork)
 library(tidyverse)
 library(stanviz)
+library(ggdist)
+library(tidyr)
+library(posterior)
+library(kableExtra)
 
 # Load the cleaned data from the pipeline and models
 tar_load(model_data_maize_heigh)
@@ -407,93 +411,134 @@ plot_ppc_error_scatter(
 
 ### Population-level natural-scale parameters
 ```{r}
-a <- plot_coef_forest(
-    model = m6_maize_model,
-    pars = c(
-        "A_p[1]","A_p[2]","A_p[3]","A_p[4]","A_p[5]",
-        "A_p[6]","A_p[7]","A_p[8]","A_p[9]","A_p[10]",
-        "A_p[11]","A_p[12]","A_p[13]","A_p[14]","A_p[14]","A_p[15]",
-        "A_p[16]"
-    ),
-    labels = c(
-        "A_p[1]" = "Control Pot 1","A_p[2]" = "Control Pot 2","A_p[3]" = "Control Pot 3",
-        "A_p[4]" = "Control Pot 4","A_p[5]" = "Control Pot 5","A_p[6]" = "Control Pot 6",
-        "A_p[7]" = "Sham Pot 1","A_p[8]" = "Sham Pot 2","A_p[9]" = "Sham Pot 3",
-        "A_p[10]" = "Sham Pot 4","A_p[11]" = "Sham Pot 5", 
-        "A_p[12]" = "EMS Pot 1","A_p[13]" = "EMS Pot 2","A_p[14]" = "EMS Pot 3",
-        "A_p[14]" = "EMS Pot 4","A_p[15]" = "EMS Pot 5","A_p[16]" = "EMS Pot 6"
-        ),
-    null_line = 39.8,
-    sort = TRUE
-    ) + labs(
-        title = "Posterior Coefficient of the Golmez Asymptote",
-        x     = "Posterior Asymptote",
-    ) +
-    theme(
-        plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
-)
+# Pull the population-level parameters as a draws_df
+pop_draws <- m6_maize_model$draws(c("A_pop", "K_pop", "c_t"), format = "draws_df")
 
-k <- plot_coef_forest(
-    model = m6_maize_model,
-    pars = c(
-        "K_p[1]","K_p[2]","K_p[3]","K_p[4]","K_p[5]",
-        "K_p[6]","K_p[7]","K_p[8]","K_p[9]","K_p[10]",
-        "K_p[11]","K_p[12]","K_p[13]","K_p[14]","K_p[14]","K_p[15]",
-        "K_p[16]"
-    ),
-    labels = c(
-        "K_p[1]" = "Control Pot 1","K_p[2]" = "Control Pot 2","K_p[3]" = "Control Pot 3",
-        "K_p[4]" = "Control Pot 4","K_p[5]" = "Control Pot 5","K_p[6]" = "Control Pot 6",
-        "K_p[7]" = "Sham Pot 1","K_p[8]" = "Sham Pot 2","K_p[9]" = "Sham Pot 3",
-        "K_p[10]" = "Sham Pot 4","K_p[11]" = "Sham Pot 5", 
-        "K_p[12]" = "EMS Pot 1","K_p[13]" = "EMS Pot 2","K_p[14]" = "EMS Pot 3",
-        "K_p[14]" = "EMS Pot 4","K_p[15]" = "EMS Pot 5","K_p[16]" = "EMS Pot 6"
+# Reshape with reordered treatment factor levels for visual clarity
+pop_long <- pop_draws %>%
+    select(-.chain, -.iteration, -.draw) %>%
+    pivot_longer(
+        everything(),
+        names_to = c("parameter", "treatment_idx"),
+        names_pattern = "(A_pop|K_pop|c_t)\\[(\\d+)\\]",
+        values_to = "value"
+    ) %>%
+    mutate(
+        treatment = factor(
+            treatment_idx,
+            levels = c("2", "3", "1"),
+            labels = c("Sham", "EMF", "Control")
         ),
-    null_line = 0.143,
-    sort = TRUE
-    ) + labs(
-        title = "Posterior Coefficient of the Golmez Growth Rate ",
-        x     = "Posterior Growth rate level ",
-    ) +
-    theme(
-        plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
-)
-
-tau <- plot_coef_forest(
-    model = m6_maize_model,
-    pars = c(
-        "tau_p[1]","tau_p[2]","tau_p[3]","tau_p[4]","tau_p[5]",
-        "tau_p[6]","tau_p[7]","tau_p[8]","tau_p[9]","tau_p[10]",
-        "tau_p[11]","tau_p[12]","tau_p[13]","tau_p[14]","tau_p[14]","tau_p[15]",
-        "tau_p[16]"
-    ),
-    labels = c(
-        "tau_p[1]" = "Control Pot 1","tau_p[2]" = "Control Pot 2","tau_p[3]" = "Control Pot 3",
-        "tau_p[4]" = "Control Pot 4","tau_p[5]" = "Control Pot 5","tau_p[6]" = "Control Pot 6",
-        "tau_p[7]" = "Sham Pot 1","tau_p[8]" = "Sham Pot 2","tau_p[9]" = "Sham Pot 3",
-        "tau_p[10]" = "Sham Pot 4","tau_p[11]" = "Sham Pot 5", 
-        "tau_p[12]" = "EMS Pot 1","tau_p[13]" = "EMS Pot 2","tau_p[14]" = "EMS Pot 3",
-        "tau_p[14]" = "EMS Pot 4","tau_p[15]" = "EMS Pot 5","tau_p[16]" = "EMS Pot 6"
-        ),
-    null_line = 8.74,
-    sort = TRUE
-    ) + labs(
-        title = "Posterior Coefficient of the Golmez Inflection point",
-        x     = "Posterior Inflection point",
-    ) +
-    theme(
-        plot.title = element_text(size = 10, face = "bold", hjust = 0.5)
-)
-
-(a + k) / tau +
-    plot_annotation(
-        title = "Golmez Equation Posterior Paramters per Pot",
-        theme = theme(
-            plot.title = element_text(size = 20,face = "bold", hjust = 0.5
-        )
+        parameter = factor(parameter, levels = c("A_pop", "K_pop", "c_t"),
+                          labels = c("Asymptote A (cm)",
+                                     "Growth rate K (per day)",
+                                     "Inflection point τ (days)"))
     )
+
+# Compute Control's posterior median per parameter for the reference line
+control_medians <- pop_long %>%
+    filter(treatment == "Control") %>%
+    group_by(parameter) %>%
+    summarize(control_median = median(value), .groups = "drop")
+
+# Consistent palette
+treatment_colors <- c(
+    "Control" = "#2E5984",
+    "Sham"    = "#B8860B",
+    "EMF"     = "#7B2D8E"
 )
+
+# Build the plot — point + interval style, with Control reference line
+plot_population_params <- ggplot(pop_long, aes(y = treatment, x = value, color = treatment)) +
+    geom_vline(
+        data = control_medians,
+        aes(xintercept = control_median),
+        linetype = "dashed",
+        color = "gray40",
+        linewidth = 0.5
+    ) +
+    stat_pointinterval(
+        .width = c(0.5, 0.9),
+        point_size = 3,
+        interval_size_range = c(0.6, 1.8)
+    ) +
+    facet_wrap(~ parameter, scales = "free_x", nrow = 1) +
+    scale_color_manual(values = treatment_colors, guide = "none") +
+    labs(
+        x = NULL,
+        y = NULL,
+        title = "Population-level Gompertz curve parameters by treatment",
+        subtitle = "Point = posterior median; thick line = 50% interval; thin line = 90% interval. Dashed line shows Control median for reference."
+    ) +
+    theme_paper +
+    theme(
+        strip.text = element_text(face = "bold", size = 11),
+        panel.spacing = unit(1, "lines")
+    )
+plot_population_params
 ``` 
+
+#### Table
+```{r}
+# Pull summary statistics for the population parameters
+pop_summary <- m6_maize_model$summary(
+    variables = c("A_pop", "K_pop", "c_t"),
+    posterior::default_summary_measures()
+)
+
+# Build the table: parameter rows, treatment columns, formatted "median [q5, q95]"
+table_data <- pop_summary %>%
+    select(variable, median, q5, q95) %>%
+    mutate(
+        parameter = case_when(
+            grepl("A_pop", variable) ~ "Асимптота A (cm)",
+            grepl("K_pop", variable) ~ "Скорост на растеж K (на ден)",
+            grepl("c_t",   variable) ~ "Момент на инфлексия τ (дни)"
+        ),
+        treatment_idx = as.integer(gsub("[^0-9]", "", variable)),
+        treatment = factor(
+            treatment_idx,
+            levels = c(1, 3, 2),      # Control, EMF, Sham — same order as plot
+            labels = c("Контрол", "EMF", "Sham")
+        ),
+        # Decimal precision matched to parameter scale
+        formatted = case_when(
+            grepl("A_pop", variable) ~ sprintf("%.1f [%.1f, %.1f]", median, q5, q95),
+            grepl("K_pop", variable) ~ sprintf("%.3f [%.3f, %.3f]", median, q5, q95),
+            grepl("c_t",   variable) ~ sprintf("%.2f [%.2f, %.2f]", median, q5, q95)
+        )
+    ) %>%
+    select(parameter, treatment, formatted) %>%
+    pivot_wider(names_from = treatment, values_from = formatted) %>%
+    # Preserve the row order: A, K, tau
+    mutate(parameter = factor(
+        parameter,
+        levels = c("Асимптота A (cm)",
+                   "Скорост на растеж K (на ден)",
+                   "Момент на инфлексия τ (дни)")
+    )) %>%
+    arrange(parameter)
+
+# Render as LaTeX
+table_latex <- kbl(
+    table_data,
+    format = "latex",
+    booktabs = TRUE,
+    align = c("l", "c", "c", "c"),
+    col.names = c("Параметър", "Контрол", "EMF", "Sham"),
+    caption = "Параметри на популационната Гомперцова крива по третиране. Стойностите са апостериорни медиани с 90\\% достоверни интервали в скоби.",
+    escape = FALSE
+) %>%
+    kable_styling(
+        latex_options = c("hold_position"),
+        position = "center"
+    ) %>%
+    add_header_above(c(" " = 1, "Третиране" = 3))
+
+# Print to console (copy-paste into LaTeX)
+cat(table_latex)
+
+```
 
 ### Pairwise contrasts
 ```{r}
@@ -537,6 +582,75 @@ tau <- plot_param_halfeye(
             plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
         )
     )
+```
+
+#### Table 
+```{r}
+# Pull summary statistics for all nine pairwise contrasts
+contrasts_summary <- m6_maize_model$summary(
+    variables = c(
+        # Asymptote contrasts
+        "log_A_emf_vs_control", "log_A_emf_vs_sham", "log_A_sham_vs_control",
+        # Rate contrasts
+        "log_K_emf_vs_control", "log_K_emf_vs_sham", "log_K_sham_vs_control",
+        # Inflection contrasts
+        "tau_emf_vs_control",   "tau_emf_vs_sham",   "tau_sham_vs_control"
+    ),
+    posterior::default_summary_measures()
+)
+
+# Build the table: parameter rows, comparison columns
+table_contrasts <- contrasts_summary %>%
+    select(variable, median, q5, q95) %>%
+    mutate(
+        parameter = case_when(
+            grepl("^log_A", variable) ~ "log A (асимптота)",
+            grepl("^log_K", variable) ~ "log K (скорост)",
+            grepl("^tau",   variable) ~ "τ (инфлексия, дни)"
+        ),
+        comparison = case_when(
+            grepl("emf_vs_control", variable)  ~ "EMF − Контрол",
+            grepl("emf_vs_sham", variable)     ~ "EMF − Sham",
+            grepl("sham_vs_control", variable) ~ "Sham − Контрол"
+        ),
+        # Decimal precision matched to parameter scale
+        formatted = case_when(
+            grepl("^log_A", variable) ~ sprintf("%.3f [%.3f, %.3f]", median, q5, q95),
+            grepl("^log_K", variable) ~ sprintf("%.3f [%.3f, %.3f]", median, q5, q95),
+            grepl("^tau",   variable) ~ sprintf("%.2f [%.2f, %.2f]", median, q5, q95)
+        )
+    ) %>%
+    select(parameter, comparison, formatted) %>%
+    pivot_wider(names_from = comparison, values_from = formatted) %>%
+    # Order rows: A, K, tau
+    mutate(parameter = factor(
+        parameter,
+        levels = c("log A (асимптота)",
+                   "log K (скорост)",
+                   "τ (инфлексия, дни)")
+    )) %>%
+    arrange(parameter) %>%
+    # Order columns: EMF-Control (headline), EMF-Sham, Sham-Control
+    select(parameter, `EMF − Контрол`, `EMF − Sham`, `Sham − Контрол`)
+
+# Render as LaTeX
+table_latex_contrasts <- kbl(
+    table_contrasts,
+    format = "latex",
+    booktabs = TRUE,
+    align = c("l", "c", "c", "c"),
+    col.names = c("Параметър", "EMF − Контрол", "EMF − Sham", "Sham − Контрол"),
+    caption = "Двойни контрасти за параметрите на Гомперцовата крива. Контрастите за $\\log A$ и $\\log K$ са в логаритмичен мащаб; контрастът за $\\tau$ е в дни. Стойностите са апостериорни медиани с 90\\% достоверни интервали в скоби.",
+    escape = FALSE
+) %>%
+    kable_styling(
+        latex_options = c("hold_position"),
+        position = "center"
+    ) %>%
+    add_header_above(c(" " = 1, "Сравнение между третирания" = 3))
+
+# Print to console
+cat(table_latex_contrasts)
 ```
 
 ### Probability-of-direction indicators 
@@ -674,6 +788,50 @@ contribution_r2 <- plot_param_halfeye(
 
 ```
 
+#### Table 
+```{r}
+# Pull summary stats for the three R² components
+r2_summary <- m6_maize_model$summary(
+    variables = c("bayes_R2_full", "bayes_R2_population", "bayes_R2_pot_contribution"),
+    posterior::default_summary_measures()
+)
+
+# Build the table: each row is one R² component
+table_r2 <- r2_summary %>%
+    select(variable, median, q5, q95) %>%
+    mutate(
+        label = case_when(
+            variable == "bayes_R2_full"             ~ "$R^2_{\\text{пълен}}$ (с информация на ниво саксия)",
+            variable == "bayes_R2_population"       ~ "$R^2_{\\text{популация}}$ (само на ниво третиране и ден)",
+            variable == "bayes_R2_pot_contribution" ~ "$R^2_{\\text{принос на саксията}}$ (разлика)"
+        ),
+        formatted = sprintf("%.3f [%.3f, %.3f]", median, q5, q95)
+    ) %>%
+    mutate(label = factor(label, levels = c(
+        "$R^2_{\\text{пълен}}$ (с информация на ниво саксия)",
+        "$R^2_{\\text{популация}}$ (само на ниво третиране и ден)",
+        "$R^2_{\\text{принос на саксията}}$ (разлика)"
+    ))) %>%
+    arrange(label) %>%
+    select(label, formatted)
+
+# Render as LaTeX
+table_latex_r2 <- kbl(
+    table_r2,
+    format = "latex",
+    booktabs = TRUE,
+    align = c("l", "c"),
+    col.names = c("Компонент", "Медиана [90\\% ДИ]"),
+    caption = "Разлагане на дисперсията чрез Байесов $R^2$ за Гомперцовия модел. Стойностите са апостериорни медиани с 90\\% достоверни интервали в скоби.",
+    escape = FALSE
+) %>%
+    kable_styling(
+        latex_options = c("hold_position"),
+        position = "center"
+    )
+
+cat(table_latex_r2)
+```
 ### Curve Prediction Grid 
 ```{r}
 # 1. Extract the grid as a draws array — gets the 3D structure
