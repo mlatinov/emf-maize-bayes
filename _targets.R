@@ -8,52 +8,26 @@ library(cmdstanr)
 ## Soruce Functions ##
 tar_source("R/clean_data_.R")
 tar_source("R/maize_height/")
+tar_source("R/maize_jip/")
+tar_source("tar_factory.R")
 
 list(
-  # Load the Table 1 
+  #### Maize Height Estimand Pipeline ####
+  maize_height_pipeline(),
+
+  # Load the JIP data #
   tar_target(
-    name = maize_heigh_raw,
-    command = readxl::read_excel("data/Table S1 - 2026 Paunov et al. - 868 MHz EMF Maize - Plant Height.xlsx",sheet = 1)
+    name = data_maize_jip,
+    command = readxl::read_excel(
+      path = "data/Table S5 - 2026 Paunov et al. - 868 MHz EMF Maize - Photosynthetic Performance (JIP-test).xlsx",
+      sheet = 4
+    )
   ),
-  # Clean Table 1
+  # CLean JIP data #
   tar_target(
-    name = model_data_maize_heigh,
-    command = clean_meize_raw(maize_heigh_raw)
+    name = model_data_jip,
+    command = clean_jip_data(data = data_maize_jip)
   ),
-  ## Hierarchical cell-means, pots pooled within treatment ##
-  tar_target(
-    name = m5_recovery_data,
-    command = maize_h_m5_dgp(n = 700)
-  ),
-  tar_target(
-    name = m5_recovery_check,
-    command = m5_stan_model(m5_recovery_data$data, prior_only = 0)
-  ),
-  tar_target(
-    name = m5_maize_model,
-    command = m5_stan_model(model_data_maize_heigh, prior_only = 0)
-  ),
-  tar_target(
-    name = m5_maize_model_pp,
-    command = m5_stan_model(model_data_maize_heigh, prior_only = 1)
-  ),
-  ## Hierarchical Gompertz, per-pot curves pooled within treatment ##
-  tar_target(
-    name = m6_recovery_data,
-    command = maize_h_m6_dgp(n = 700)
-  ),
-  tar_target(
-    name = m6_recovery_check,
-    command = m6_stan_model(m6_recovery_data$data, prior_only = 0)
-  ),
-  tar_target(
-    name = m6_maize_model,
-    command = m6_stan_model(model_data_maize_heigh, prior_only = 0)
-  ),
-  tar_target(
-    name = m6_maize_model_pp,
-    command = m6_stan_model(model_data_maize_heigh, prior_only = 1)
-  ), 
   ## Quatro Report 
   tar_quarto(
     name = maize_height_quatro_report,
