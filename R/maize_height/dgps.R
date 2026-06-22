@@ -114,7 +114,6 @@ maize_h_m4_dgp <- function(
 #### Hierarchical cell-means, pots pooled within treatment ####
 maize_h_m5_dgp <- function(
   n = 700,
-  prob_treatment = c(6, 4, 6) / 16,
   prob_day       = c(255, 249, 169, 95) / 768,
   prob_pot       = c(53,49,44,52,41,43,54,51,45,54,55,52,40,45,41,49 ) / 768
 ){
