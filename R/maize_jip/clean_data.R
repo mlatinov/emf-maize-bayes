@@ -1,7 +1,7 @@
 
 #### Function to Clean JIP data ####
-clean_jip_data <- function(data){
-  data %>%
+clean_jip_data <- function(data_maize_jip){
+  data_maize_jip %>%
     # Rename The Variables 
     rename(
       treatment = Treatment,
@@ -25,5 +25,13 @@ clean_jip_data <- function(data){
       delta_Ro = mean(delta_Ro),
       n_reps   = n(),          
       .groups  = "drop"
-  )
+    ) %>%
+    mutate(
+      # Add Unique Pot identifier
+      pot_idx  = as.integer(factor(paste(treatment, pot))),
+      day_idx = as.integer(factor(day,levels = c(13,20,27))),
+      treatment = as.integer(factor(treatment,levels = c("Control","Sham","EMF")))
+    ) %>%
+    # Order by Pot and treatment 
+    arrange(treatment,pot)
 }
