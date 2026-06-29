@@ -63,7 +63,6 @@ maize_jip_gammaRC_pipilene <- function(){
       name = model_data_jip,
       command = clean_jip_data(data = data_maize_jip)
     ),
-    #### Cell Means GammaRC Model 1 Without Heirarcle or Pooling ####
     ## Simulation Datasets  
     tar_target(
       name = sim_gammaRC_jip_1,
@@ -73,6 +72,11 @@ maize_jip_gammaRC_pipilene <- function(){
       name = sim_gammaRC_jip_2,
       command = dgp_gammaRC_jip_2(n = 188)
     ),
+    tar_target(
+      name = jip_sim_data_ncor,
+      command = dgp_combined_jip(n = 188)
+    ),
+    #### Cell Means GammaRC Model 1 Without Heirarcle or Pooling ####
     ## Model Checks 
     tar_target(
       name = gammarc_model_1_pp,
