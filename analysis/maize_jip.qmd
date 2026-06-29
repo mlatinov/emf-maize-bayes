@@ -1,0 +1,142 @@
+---
+title: "Maize JIP Models"
+subtitle: "Different Maize Models"
+author: "Metodi Latinov"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    fig-width: 8
+    fig-height: 5
+    fig-cap-location: bottom
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false
+knitr:
+  opts_chunk:
+    fig.align: center
+---
+```{r setup}
+cat("Working directory:", getwd(), "\n")
+cat("_targets dir exists:", dir.exists("_targets"), "\n")
+cat("_targets.R exists:", file.exists("_targets.R"), "\n")
+cat("Files here:", paste(head(list.files()), collapse = ", "), "\n")
+
+# Libraries
+library(targets)
+library(patchwork)
+library(tidyverse)
+library(stanviz)
+library(posterior)
+
+# Load the cleaned data from the pipeline and models
+tar_load(model_data_jip)
+
+## GammaRC Models 
+tar_load(gammarc_model_1)
+tar_load(gammarc_model_1_pp)
+
+## Hierarcle GammaRc 
+tar_load(gammarc_model_2)
+tar_load(gammarc_model_2_pp)
+```
+
+# GammaRC Simple Model
+
+## Prior Predictive Checks 
+```{r}
+dens_gamma_rc_s <- plot_prior_predictive_dens(
+    model = gammarc_model_1_pp,
+    yrep_var = "gammaRC_rep",
+    y = model_data_jip$gammaRC,
+    outcome_label = "GammaRC"  
+)
+gamma_rc_mean <- plot_prior_predictive_stat(
+    model = gammarc_model_1_pp,
+    yrep_var = "gammaRC_rep",
+    y = model_data_jip$gammaRC,
+    stat = c("mean"),
+    outcome_label = "GammaRC" 
+)
+gamma_rc_sd <- plot_prior_predictive_stat(
+    model = gammarc_model_1_pp,
+    yrep_var = "gammaRC_rep",
+    y = model_data_jip$gammaRC,
+    stat = c("sd"),
+    outcome_label = "GammaRC" 
+)
+dens_gamma_rc_s / (gamma_rc_mean + gamma_rc_sd) + 
+    plot_annotation(
+        title = "Prior Predictive Checks for Simple GammaRC Model",
+        theme = theme(
+            plot.title = element_text(face = "bold",hjust = 0.5,size = 15)
+        )
+    )
+
+```
+
+## Posterior Predictive Checks 
+```{r}
+post_dens_gammarc_s <- plot_ppc_dens(
+    model = gammarc_model_1,
+    y = model_data_jip$gammaRC,
+    yrep_var = "gammaRC_rep",
+    outcome_label = "Posterior GammaRc"
+)
+post_stat_gammarc_s <- plot_ppc_stat_grid(
+    model = gammarc_model_1,
+    y = model_data_jip$gammaRC,
+    yrep_var = "gammaRC_rep", 
+    stats = c("mean","sd")
+)
+post_dens_gammarc_s / post_stat_gammarc_s + 
+    plot_annotation(
+        title = "Posterior Predictive Check Simple GammaRC Model",
+        theme = theme(
+            plot.title = element_text(face = "bold",hjust = 0.5, size = 20)
+        )
+    )
+```
+
+# Hierarcle GammaRC Model
+
+## Prior Predictive Checks 
+```{r}
+plot_ppc_by_group(
+    model = gammarc_model_2_pp,
+    y = model_data_jip$gammaRC,
+    group = model_data_jip$treatment,
+    yrep_var = "gammaRC_rep",
+    outcome_label = c("Prior Predictive GammaRC"),
+    group_labels = c("Control","Sham","EMF")
+)
+```
+
+## Posterior Predictive Checks
+```{r}
+plot_ppc_by_group(
+    model = gammarc_model_2,
+    y = model_data_jip$gammaRC,
+    group = model_data_jip$treatment,
+    yrep_var = "gammaRC_rep",
+    outcome_label = c("Posterior Predictive GammaRC"),
+    group_labels = c("Control","Sham","EMF")
+)
+```
+
+# Model Comparison 
+```{r}
+# Compute Loo
+loo_s <- compute_loo(model = gammarc_model_1, loglik_var = "log_lik")
+loo_h <- compute_loo(model = gammarc_model_2, loglik_var = "log_lik")
+
+bad <- which(loo_gammarc_h$diagnostics$pareto_k > 0.7)
+model_data_jip[bad, c("treatment", "day", "pot_idx", "plant", "gammaRC")]
+```
