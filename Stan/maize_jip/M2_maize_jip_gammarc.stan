@@ -35,8 +35,8 @@ transformed parameters {
 // Model 
 model{
     // Priors
-    to_vector(eta) ~ normal(-1, 1);
-    kappa_d        ~ exponential(0.01);
+    to_vector(eta) ~ normal(-1, 0.3);
+    kappa_d        ~ exponential(0.001);
     tau_t          ~ exponential(2);
     zp             ~ normal(0,1);
     

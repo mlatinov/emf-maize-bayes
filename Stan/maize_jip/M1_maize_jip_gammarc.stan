@@ -23,8 +23,8 @@ transformed parameters {
 // Model Block 
 model{
     // Priors 
-    to_vector(eta) ~ normal(-1, 1);
-    kappa_d ~ exponential(0.01);
+    to_vector(eta) ~ normal(-1, 0.3);
+    kappa_d ~ exponential(0.001);
 
     // Model Likelihood 
     if(prior_only == 0){
@@ -40,11 +40,16 @@ model{
 generated quantities {
     // Posterior or prior predictive replicates
     vector[N] gammaRC_rep;
+    vector[N] log_lik;
     for (i in 1:N) {
         real m = mu[treatment[i], day_idx[i]];
         real k = kappa_d[day_idx[i]];
-        gammaRC_rep[i] = beta_rng(m * k, (1 - m) * k);
+        real a = m * k;
+        real b = (1 - m) * k;
+        log_lik[i]     = beta_lpdf(gammaRC[i] | a, b);
+        gammaRC_rep[i] = beta_rng(a, b);
     }
+    
     // Derived RC/ABS per cell 
     matrix[3,3] RC_ABS;
     for (t in 1:3)
@@ -52,4 +57,5 @@ generated quantities {
             RC_ABS[t,d] = mu[t,d] / (1 - mu[t,d]);
 
 }
+
 
