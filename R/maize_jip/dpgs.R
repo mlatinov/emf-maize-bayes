@@ -8,7 +8,7 @@ dgp_gammaRC_jip_1 <- function(
   prob_treatment = c(68, 72, 48) / 188,
   prob_day       = c(64, 64, 60) / 188
 ){
-  # Sumulate Day and  Treatment
+  # Simulate Day and  Treatment
   day       <- sample(1:3, size = n, replace = TRUE, prob = prob_day)
   treatment <- sample(1:3, size = n, replace = TRUE, prob = prob_treatment)
 
@@ -16,10 +16,10 @@ dgp_gammaRC_jip_1 <- function(
   eta <- matrix(rnorm(n = 9, mean = -1, sd = 1),nrow = 3,ncol = 3,dimnames = list(treatment = 1:3, day = 1:3))
   mu_mat <- plogis(eta)
   
-  # For every day D allow seperate kappa variation 
+  # For every day D allow separate kappa variation 
   kappa_d <- rexp(n = 3, rate = 0.01)
 
-  # Per obervation pair
+  # Per observation pair
   mu_i    <- mu_mat[cbind(treatment, day)]
   kappa_i <- kappa_d[day]
   
@@ -29,7 +29,7 @@ dgp_gammaRC_jip_1 <- function(
     shape1 = mu_i * kappa_i,
     shape2 = (1 - mu_i) * kappa_i
   )
-  # Return the simulated Data and the Paramters 
+  # Return the simulated Data and the Parameters 
   return(list(
     data = tibble(
       day_idx   = day,
@@ -73,7 +73,7 @@ dgp_gammaRC_jip_2 <- function(
   kappa_i <- kappa_d[day]               
   gammaRC <- rbeta(n, shape1 = mu_i * kappa_i, shape2 = (1 - mu_i) * kappa_i)
 
-  # Return sim data and paramters 
+  # Return sim data and parameters 
   return(list(
     data = tibble(
       day_idx   = day,
@@ -91,7 +91,7 @@ dgp_gammaRC_jip_2 <- function(
   ))
 }
 
-#### Cell Means Combined Across all estimands ####
+#### Cell Means Combined Across all estimates ####
 dgp_combined_jip <- function(
   n = 188,
   prob_day = c(64, 64, 60) / 188,
@@ -133,7 +133,7 @@ dgp_combined_jip <- function(
   phi_tau_t   <- rexp(n = 3, rate = 3)
   phi_zp      <- rnorm(n = 16, mean = 0, sd = 1)
 
-  # Per pot offect 
+  # Per pot effect
   phi_up <- phi_tau_t[pot_treatment] * phi_zp
 
   # Per observation 
@@ -150,13 +150,13 @@ dgp_combined_jip <- function(
   )
 
   ## Psi Model ## ===========================================================
-  # Paramters 
+  # Parameters 
   psi_eta_dt  <- matrix(rnorm(n = 9, mean = 0.7, sd = 0.3), nrow = 3, ncol = 3)
   psi_kappa_d <- rexp(n = 3, rate = 0.01) 
   psi_tau_t   <- rexp(n = 3, rate = 3)
   psi_zp      <- rnorm(n = 16, mean = 0, sd = 1)
 
-  # Per pot offcet 
+  # Per pot offset
   psi_up <- psi_tau_t[pot_treatment] * psi_zp
 
   # Per obs 
@@ -173,13 +173,13 @@ dgp_combined_jip <- function(
   )
 
   ## Ro Model ## ============================================================
-  # Paramters 
+  # Parameters 
   ro_eta_dt   <- matrix(rnorm(n = 9, mean = 0.1, sd = 0.7),nrow = 3, ncol = 3)
   ro_kappa_d  <- rexp(n = 3, rate = 0.01) 
   ro_tau_t    <- rexp(n = 3, rate = 2)
   ro_zp       <- rnorm(n = 16, mean = 0, sd = 1)
   
-  # Pot Offcet 
+  # Pot Offset 
   ro_up <- ro_tau_t[pot_treatment] * ro_zp
 
   # Per obs
@@ -202,12 +202,12 @@ dgp_combined_jip <- function(
     pot_idx   = pot_idx,
     delta_Ro = delta_Ro,
     psi_Eo   = psi_Eo,
-    phi_po   = phi_po,
+    phi_Po   = phi_po,
     gammaRC  = gammaRC
   )
 
-  # Combine the paramters in a list 
-  paramters <- list(
+  # Combine the parameters in a list 
+  parameters <- list(
     gammaRC = list(
       kappa_d = g_kappa_d,   
       tau     = g_tau_t,          
@@ -234,5 +234,5 @@ dgp_combined_jip <- function(
     )
   )
   # Return Simulated Data and Parameters 
-  return(list(data = sim_data, parameters = paramters))
+  return(list(data = sim_data, parameters = parameters))
 }
