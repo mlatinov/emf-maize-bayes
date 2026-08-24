@@ -1,6 +1,6 @@
 #### Function to Call Stan Model for JIP analysis ####
 
-#### GammaRC Model 1 Cell-Means Model Without Heirarcle or Pooling 
+#### GammaRC Model 1 Cell-Means Model Without Hierarchy or Pooling 
 m1_gamma_rc_model <- function(model_data_jip, prior_only = 0){
 
   # Compile Stan model 
@@ -20,17 +20,17 @@ m1_gamma_rc_model <- function(model_data_jip, prior_only = 0){
     iter_sampling = 2000,
     seed          = 42 
   )
-  # Return the mdodel Output 
+  # Return the model Output 
   return(m1_gamma_rc_sample)
 }
 
-#### GammaRC2 Model Hierarcle Model with Parial Pooling ####
+#### Joint Model Hierarchy Model with Partial Pooling ####
 m2_gamma_rc_model <- function(model_data_jip, prior_only = 0) {
   
   ## Compile the model 
   m2_gamma_rc <- cmdstanr::cmdstan_model(stan_file = "Stan/maize_jip/M2_maize_jip_gammarc.stan")
 
-  ## Initial Paramter Function to Start 
+  ## Initial Parameter Function to Start 
   init_fn <- function() list(
     eta     = matrix(-1, 3, 3), # logit of ~0.27
     kappa_d = rep(50, 3),       # concentration
@@ -58,4 +58,34 @@ m2_gamma_rc_model <- function(model_data_jip, prior_only = 0) {
   )
   # Return the model object 
   return(sample_gamma_rc)
+}
+
+#### Combined Not Correlated Model Call ####
+combined_jip <- function(model_data_jip, prior_only = 0, adapt_delta = 0.95){
+
+  # Compile the model 
+  combined_model <- cmdstanr::cmdstan_model(stan_file = "Stan/maize_jip/M3_maize_jip_combined.stan")
+
+  # Sample from the model 
+  sample_combined_model <- combined_model$sample(
+    data = list(
+      N = nrow(model_data_jip),
+      prior_only = prior_only,
+      gammaRC    = model_data_jip$gammaRC,
+      phi_Po     = model_data_jip$phi_Po,
+      psi_Eo     = model_data_jip$psi_Eo,
+      delta_Ro   = model_data_jip$delta_Ro,
+      day_idx    = model_data_jip$day_idx,
+      treatment  = model_data_jip$treatment,
+      pot_idx    = model_data_jip$pot_idx,
+      pot_treatment = c(rep(1, 6), rep(2, 4), rep(3, 6))
+    ),
+    output_dir      = "stan_results/",
+    iter_sampling   = 3000,
+    chains          = 4,
+    adapt_delta     = adapt_delta,    
+    seed            = 42
+  )
+  # Return Combined Model 
+  return(sample_combined_model)
 }
