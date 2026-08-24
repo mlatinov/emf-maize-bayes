@@ -470,7 +470,6 @@ plot_population_params <- ggplot(pop_long, aes(y = treatment, x = value, color =
         title = "Population-level Gompertz curve parameters by treatment",
         subtitle = "Point = posterior median; thick line = 50% interval; thin line = 90% interval. Dashed line shows Control median for reference."
     ) +
-    theme_paper +
     theme(
         strip.text = element_text(face = "bold", size = 11),
         panel.spacing = unit(1, "lines")
