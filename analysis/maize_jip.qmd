@@ -43,6 +43,15 @@ tar_load(model_data_jip)
 tar_load(jip_model)
 tar_load(jip_model_pp)
 
+## Add empirical generated quantities from the data 
+model_data_jip <- model_data_jip %>%
+  mutate(
+    PIabs_obs    = (gammaRC / (1 - gammaRC)) * (phi_Po / (1 - phi_Po)) * (psi_Eo / (1 - psi_Eo)),
+    PItotal_obs  = PIabs_obs * (delta_Ro / (1 - delta_Ro)),
+    logPIabs_obs   = log(PIabs_obs),
+    logPItotal_obs = log(PItotal_obs)
+  )
+
 ```
 
 # Jip Models 
@@ -168,9 +177,9 @@ phi_po_s / (phi_po_mean_s + phi_po_sd_s) +
     plot_annotation(
         title = "Prior Predictive Checks for Phi Po Submodel",
         theme = theme(
-            plot.title = element_text(family = "bold",hjust = 0.5, size = 20) 
-        )
+            plot.title = element_text(face = "bold",hjust = 0.5, size = 20) 
     )
+)
 ```
 
 ### Posterior Predictive Checks 
@@ -287,7 +296,7 @@ psi_eo_p / psi_eo_stats +
         title = "Posterior Predictive Checks for PSI EO Submodel",
         theme = theme(
             plot.title = element_text(
-                family = "bold", size = 20, hjust = 0.5
+                face = "bold", size = 20, hjust = 0.5
             )
     ) 
 )
@@ -379,7 +388,7 @@ delta_p / delta_ro_stats +
         title = "Posterior Predictive Checks for Delta Ro Submodel",
         theme = theme(
             plot.title = element_text(
-                family = "bold", size = 20, hjust = 0.5
+                face = "bold", size = 20, hjust = 0.5
             )
     ) 
 )
@@ -402,10 +411,78 @@ plot_coef_forest(
 )
 ```
 
+### R2 
+```{r}
+plot_param_halfeye(
+    model = jip_model,
+    pars  = "R2_ro_full",
+    labels = c("R2_ro_full"= "Posterior R2"),
+    null_line = 0.666 
+)
+```
+
 # Estimands Derived from the Combined JIP Models 
 
 ## PIabs
 PIabs — absorption-based performance index: RC/ABS × [phi_Po odds] × [psi_Eo odds], where RC/ABS = gammaRC/(1-gammaRC). Composite of reaction-center density × two downstream efficiencies. Generated quantity, computed per posterior draw from the three constituent primaries — identity verified to machine precision against the raw data. Forest plot shows Day 20 EMF-Control and Sham-Control both negative (medians ≈ -0.11 to -0.13), while Day 20 EMF-Sham sits at ~0 — pattern points to a room/non-Control effect at day 20 rather than an EMF-specific one, echoing the height Sham-deficit story. Candidate driver: phi_Po's day-20 dip (see above) — needs the primary-by-primary Day 20 decomposition to confirm.
+
+### Prior Predictive Distribution 
+```{r}
+dens_piabs_s <- plot_prior_predictive_dens(
+    model = jip_model_pp,
+    yrep_var = "logPIabs_rep",
+    y = model_data_jip$logPIabs_obs,
+    outcome_label = "log(PIabs)"
+) + xlim(0, 5)
+piabs_mean <- plot_prior_predictive_stat(
+    model = jip_model_pp,
+    yrep_var = "logPIabs_rep",
+    y = model_data_jip$logPIabs_obs,
+    stat = c("mean"),
+    outcome_label = "log(PIabs)"
+)
+piabs_sd <- plot_prior_predictive_stat(
+    model = jip_model_pp,
+    yrep_var = "logPIabs_rep",
+    y = model_data_jip$logPIabs_obs,
+    stat = c("sd"),
+    outcome_label = "log(PIabs)"
+)
+dens_piabs_s / (piabs_mean + piabs_sd) +
+    plot_annotation(
+        title = "Prior Predictive Checks for log(PIabs)",
+        theme = theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15))
+    )
+```
+
+### Posterior Predictive Distribution 
+```{r}
+dens_piabs_p <- plot_prior_predictive_dens(
+    model = jip_model,
+    yrep_var = "logPIabs_rep",
+    y = model_data_jip$logPIabs_obs,
+    outcome_label = "log(PIabs)"
+) 
+piabs_mean_p <- plot_prior_predictive_stat(
+    model = jip_model,
+    yrep_var = "logPIabs_rep",
+    y = model_data_jip$logPIabs_obs,
+    stat = c("mean"),
+    outcome_label = "log(PIabs)"
+)
+piabs_sd_p <- plot_prior_predictive_stat(
+    model = jip_model,
+    yrep_var = "logPIabs_rep",
+    y = model_data_jip$logPIabs_obs,
+    stat = c("sd"),
+    outcome_label = "log(PIabs)"
+)
+dens_piabs_p / (piabs_mean_p + piabs_sd_p) +
+    plot_annotation(
+        title = "Posterior Predictive Checks for log(PIabs)",
+        theme = theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15))
+    )
+```
 
 ### Posterior Estimates & Posterior Contracts per Treatment + Deconstruction
 ```{r}
@@ -425,6 +502,64 @@ plot_coef_forest(
 
 ## PItotal
 PItotal — total performance index: PIabs × [delta_Ro odds]. Extends PIabs one step further through the PSI acceptor side. Generated quantity, same machine-precision-verified identity. Because delta_Ro correlates negatively with the other three primaries (unlike PIabs's all-positive-correlation components), expect PItotal's joint-model uncertainty correction to move in the opposite direction from PIabs's once the capstone model is built — this is a reportable result in its own right, not just a footnote.
+
+### Prior Predictive Distribution 
+```{r}
+dens_pitotal_s <- plot_prior_predictive_dens(
+    model = jip_model_pp,
+    yrep_var = "logPItot_rep",
+    y = model_data_jip$logPItotal_obs,
+    outcome_label = "log(PItotal)"
+) + xlim(0, 5)
+pitotal_mean <- plot_prior_predictive_stat(
+    model = jip_model_pp,
+    yrep_var = "logPItot_rep",
+    y = model_data_jip$logPItotal_obs,
+    stat = c("mean"),
+    outcome_label = "log(PItotal)"
+)
+pitotal_sd <- plot_prior_predictive_stat(
+    model = jip_model_pp,
+    yrep_var = "logPItot_rep",
+    y = model_data_jip$logPItotal_obs,
+    stat = c("sd"),
+    outcome_label = "log(PItotal)"
+)
+dens_pitotal_s / (pitotal_mean + pitotal_sd) +
+    plot_annotation(
+        title = "Prior Predictive Checks for log(PItotal)",
+        theme = theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15))
+    )
+```
+
+### Posterior Predictive Distribution 
+```{r}
+dens_pitotal_p <- plot_prior_predictive_dens(
+    model = jip_model,
+    yrep_var = "logPItot_rep",
+    y = model_data_jip$logPItotal_obs,
+    outcome_label = "log(PItotal)"
+) 
+pitotal_mean_p <- plot_prior_predictive_stat(
+    model = jip_model,
+    yrep_var = "logPItot_rep",
+    y = model_data_jip$logPItotal_obs,
+    stat = c("mean"),
+    outcome_label = "log(PItotal)"
+)
+pitotal_sd_p <- plot_prior_predictive_stat(
+    model = jip_model,
+    yrep_var = "logPItot_rep",
+    y = model_data_jip$logPItotal_obs,
+    stat = c("sd"),
+    outcome_label = "log(PItotal)"
+)
+dens_pitotal_p / (pitotal_mean_p + pitotal_sd_p) +
+    plot_annotation(
+        title = "Posterior Predictive Checks for log(PItotal)",
+        theme = theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15))
+    )
+```
 
 ### Posterior Estimates & Posterior Contracts per Treatment + Deconstruction
 ```{r}

@@ -225,16 +225,30 @@ generated quantities {
     vector[N] log_lik = log_lik_rc + log_lik_po + log_lik_eo + log_lik_ro;
 
     // 9 POSTERIOR PREDICTIVE REPS ===========================================
-    array[N] real rc_rep; array[N] real po_rep; array[N] real eo_rep; array[N] real ro_rep;
-    array[N] real PIabs_rep; array[N] real PItot_rep;
+    // Small epsilon to keep mu away from exact 0/1 boundaries during prior/posterior predictive draws
+    real eps = 1e-9;
+    array[N] real rc_rep;       array[N] real po_rep; 
+    array[N] real eo_rep;       array[N] real ro_rep;
+    array[N] real PIabs_rep;    array[N] real PItot_rep;
+    array[N] real logPIabs_rep; array[N] real logPItot_rep;
+
     for (i in 1:N) {
         real rr =  beta_rng(a_rc[i], b_rc[i]);
         real rp =  beta_rng(a_po[i], b_po[i]);
         real re =  beta_rng(a_eo[i], b_eo[i]);
         real rro = beta_rng(a_ro[i], b_ro[i]);
-        rc_rep[i] = rr; po_rep[i] = rp; eo_rep[i] = re; ro_rep[i] = rro;
-        real pia = (rr / (1 - rr)) * (rp / (1 - rp)) * (re / (1 - re));
+
+        // Clip each replicated draw away from the boundary before any downstream transform
+        real rr_c  = fmin(fmax(rr,  eps), 1 - eps);
+        real rp_c  = fmin(fmax(rp,  eps), 1 - eps);
+        real re_c  = fmin(fmax(re,  eps), 1 - eps);
+        real rro_c = fmin(fmax(rro, eps), 1 - eps);
+        rc_rep[i] = rr; po_rep[i] = rp; eo_rep[i] = re; ro_rep[i] = rro; 
+
+        real pia = (rr_c / (1 - rr_c)) * (rp_c / (1 - rp_c)) * (re_c / (1 - re_c));
         PIabs_rep[i] = pia;
-        PItot_rep[i] = pia * (rro / (1 - rro));
+        PItot_rep[i] = pia * (rro_c / (1 - rro_c));
+        logPIabs_rep[i] = log(pia);
+        logPItot_rep[i] = log(PItot_rep[i]);
     }
 }

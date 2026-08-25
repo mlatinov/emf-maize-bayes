@@ -22,7 +22,7 @@ int in_rope_symmetric(real effect, real radius) {
   return (effect >= -radius) && (effect <= radius);
 }
 
-// Variance Decompositon r2
+// Variance Decomposition r2
 real bayes_R2_general(vector mu, real var_residual) {
     real var_fit = variance(mu);
     return var_fit / (var_fit + var_residual);
