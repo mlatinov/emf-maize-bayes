@@ -5,7 +5,7 @@ library(tidyverse)
 library(tarchetypes)
 
 ## Source Functions ##
-tar_source("R/clean_data_.R")
+tar_source("R/maize_bb/")
 tar_source("R/maize_height/")
 tar_source("R/maize_jip/")
 tar_source("tar_factory.R")
@@ -32,6 +32,9 @@ list(
   maize_height_pipeline(run = FALSE),
 
   #### Maize JIP Estimands Pipeline ####
-  maize_jip_pipeline(run = TRUE)
+  maize_jip_pipeline(run = FALSE),
+
+  ### Maize Biomass/Biochem Pipeline ####
+  biochem_biomass_pipeline(run = TRUE)
 
 )
