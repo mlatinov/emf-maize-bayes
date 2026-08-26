@@ -1,4 +1,10 @@
 #### Maize Height Pipeline Function ####
+## This pipeline takes the data from data directory in the root and Table 1 and runs sequentially :
+## 1 Cleaning of the data : clean_maize_raw()
+## 2 Data Simulation for Cell means model and Gompertz model 
+## 3 Test the simulation recovery to both of them 
+## 4 Fit the Stan models to both of them 
+## 5 Produces a Small Quatro Document for the model summary.
 maize_height_pipeline <- function(run = FALSE){
   ## Condition for running the pipeline 
   if(run){
@@ -59,7 +65,13 @@ maize_height_pipeline <- function(run = FALSE){
   }
 }
 
-#### Maize JIP GammaRC Pipeline ####
+#### Maize JIP Pipeline ####
+## Maize JIP pipeline have the goal to work with multiple outcomes and model them together. It runs sequentially
+## 1 Cleaning of the data 
+## 2 Simulation of the data 
+## 3 Recovery Checks 
+## 4 Real Data Modeling 
+## 5 Small Quatro Document 
 maize_jip_pipeline <- function(run = FALSE){
   ## Condition to run the pipeline or get warnings if skipped
   if(run){
@@ -105,4 +117,18 @@ maize_jip_pipeline <- function(run = FALSE){
   }else{
     warning("Targets Pipeline Maize JIT will be skipped")
   }
+}
+#### Maize Biochem/Biomass Pipeline ####
+biochem_biomass_pipeline <- function(run = FALSE){
+   ## Condition to run the pipeline or get warnings if skipped
+  if(run){
+    ## Load join and clean All the datasets needed for the pipeline 
+    tar_target(
+      name = data_bb,            # bb - Biochem-Biomass
+      command = clean_bb_data()
+    )
+  }
+
+
+
 }
