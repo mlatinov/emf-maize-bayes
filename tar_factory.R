@@ -119,7 +119,7 @@ maize_jip_pipeline <- function(run = FALSE){
   }
 }
 #### Maize Biochem/Biomass Pipeline ####
-biochem_biomass_pipeline <- function(run = FALSE){
+maize_biochem_biomass_pipeline <- function(run = FALSE){
    ## Condition to run the pipeline or get warnings if skipped
   if(run){
     ## Load join and clean All the datasets needed for the pipeline 
@@ -127,6 +127,8 @@ biochem_biomass_pipeline <- function(run = FALSE){
       name = data_bb,            # bb - Biochem-Biomass
       command = clean_bb_data()
     )
+  }else{
+    warning("Target Pipeline Maize Biochem/Biomass will be skipped")
   }
 
 

@@ -1,6 +1,6 @@
 #### Function to Clean SOT data ####
-clean_sot <- function(sot_data){
-  sot_data %>%
+clean_sod <- function(sod_data){
+  sod_data %>%
     # Rename the variables with R friendly names  
     rename(
       sod_dw = `SOD, U/mg DW`,
@@ -153,7 +153,7 @@ clean_biomass <- function(biomass_data){
 clean_bb_data <- function(){
 
   ## Load the datasets needed 
-  sot_data_raw  <- readxl::read_excel("data/Table S9 - 2026 Paunov et al. - 868 MHz EMF Maize - SOD Activity.xlsx", sheet = 2)
+  sod_data_raw  <- readxl::read_excel("data/Table S9 - 2026 Paunov et al. - 868 MHz EMF Maize - SOD Activity.xlsx", sheet = 2)
   teac_data_raw <- readxl::read_excel("data/Table S8 - 2026 Paunov et al. - 868 MHz EMF Maize - TEAC.xlsx",         sheet = 2)
   cat_data_raw  <- readxl::read_excel("data/Table S10 - 2026 Paunov et al. - 868 MHz EMF Maize - CAT Activity.xlsx",sheet = 2)  
   h2_o2_data_raw   <- readxl::read_excel("data/Table S7 - 2026 Paunov et al. - 868 MHz EMF Maize - Hidrogen Peroxide.xlsx",sheet = 2) 
@@ -162,7 +162,7 @@ clean_bb_data <- function(){
   sugars_data_raw  <- readxl::read_excel("data/Table S4 - 2026 Paunov et al. - 868 MHz EMF Maize - Reducing Sugars.xlsx",  sheet = 2) 
 
   ### Average Over the Tech Replicate and clean the names ###  
-  sot_data   <- clean_sot(sot_data_raw)
+  sod_data   <- clean_sod(sod_data_raw)
   cat_data   <- clean_cat(cat_data_raw)
   mda_data   <- clean_mda(mda_data_raw)
   teac_data  <- clean_teac(teac_data_raw)
@@ -172,7 +172,7 @@ clean_bb_data <- function(){
 
   ## Join the dataset together via day treatment pot combination ##
   combined_data <- biomass_data %>% 
-    inner_join(sot_data,   by = "id") %>%
+    inner_join(sod_data,   by = "id") %>%
     inner_join(cat_data,   by = "id") %>%
     inner_join(mda_data,   by = "id") %>%
     inner_join(teac_data,  by = "id") %>%
@@ -182,9 +182,9 @@ clean_bb_data <- function(){
     # Get Unique identifiers later for modeling in Stan
     mutate(
       treatment_id     = as.integer(factor(treatment, levels = c("Control","Sham","EMF"))),
-      pot_treatment_id = as.integer(as.factor(paste(pot, treatment,sep = "_"))),
-      cell_id          = as.integer(as.factor(paste(treatment, day,sep = "_"))),
-      day_id           = as.integer(day)
+      pot_treatment_id = as.integer(factor(paste(treatment, pot, sep = "_"),levels = unique(paste(treatment, pot, sep = "_")))),
+      cell_id          = (day_id - 1L) * n_treatment + treatment_id,
+      day_id           = as.integer(factor(day, levels = sort(unique(day)))),
     )
 
   # Return Combined data 

@@ -35,6 +35,6 @@ list(
   maize_jip_pipeline(run = FALSE),
 
   ### Maize Biomass/Biochem Pipeline ####
-  biochem_biomass_pipeline(run = TRUE)
+  maize_biochem_biomass_pipeline(run = TRUE)
 
 )
