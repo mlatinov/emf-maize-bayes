@@ -182,11 +182,20 @@ clean_bb_data <- function(){
     # Get Unique identifiers later for modeling in Stan
     mutate(
       treatment_id     = as.integer(factor(treatment, levels = c("Control","Sham","EMF"))),
-      pot_treatment_id = as.integer(factor(paste(treatment, pot, sep = "_"),levels = unique(paste(treatment, pot, sep = "_")))),
-      cell_id          = (day_id - 1L) * n_treatment + treatment_id,
+      pot_id           = as.integer(factor(paste(treatment, pot, sep = "_"),levels = unique(paste(treatment, pot, sep = "_")))),
       day_id           = as.integer(factor(day, levels = sort(unique(day)))),
+      cell_id          = (day_id - 1L) * length(unique(treatment)) + treatment_id
     )
-
+  
+  # Get pot_treatment_id 
+  pot_treatment_id <- combined_data %>% 
+    distinct(pot_id, treatment_id) %>%
+    arrange(pot_id) %>%
+    pull(treatment_id)
+  
   # Return Combined data 
-  return(combined_data)
+  return(list(
+    data = combined_data,
+    additional = list(pot_treatment_id = pot_treatment_id)    
+  ))
 }
