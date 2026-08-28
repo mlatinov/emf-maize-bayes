@@ -57,7 +57,7 @@ transformed parameters {
     vector[16] eo_up = eo_tau_t[pot_treatment] .* eo_zp_pot;
     vector[16] ro_up = ro_tau_t[pot_treatment] .* ro_zp_pot;
 
-    // Cell-mean lookup via single-array gather on the flattened matrix,
+    // Cell-mean lookup via single-array gather on the flattened matrix
     vector[N] rc_mu = inv_logit(to_vector(eta_rc)[cell_idx] + rc_up[pot_idx]);
     vector[N] po_mu = inv_logit(to_vector(eta_po)[cell_idx] + po_up[pot_idx]);
     vector[N] eo_mu = inv_logit(to_vector(eta_eo)[cell_idx] + eo_up[pot_idx]);

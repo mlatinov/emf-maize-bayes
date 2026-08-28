@@ -6,7 +6,7 @@ data{
     vector<lower = 0>[N] plant_height;
     int<lower = 0, upper = 1>  prior_only;
 }
-// Model Paramters block
+// Model Parameters block
 parameters{
     vector[3] alpha;
     real<lower=0.001> sigma;

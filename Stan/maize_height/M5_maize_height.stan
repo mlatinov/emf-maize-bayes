@@ -15,7 +15,7 @@ data{
     array[N] int<lower=1, upper=16> pot_idx;
 }
 
-// Model paramters 
+// Model parameters 
 parameters{
     matrix[3, 4] alpha_dt;            // log-median height of treatment on day 
     vector[16]   z_bar_p;             // Unit-scale pot deviation
