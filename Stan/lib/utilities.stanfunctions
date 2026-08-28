@@ -1,0 +1,13 @@
+// Normal Scaling function 
+vector scale(vector mu){
+    return (mu - mean(mu) / sd(mu));
+}
+// Non-centered offsets
+vector nco(vector tau, array[] int group, vector zeta){
+    return tau[group] .* zeta;
+}
+
+// Cell-mean lookup via single-array gather on the flattened matrix
+vector get_ni(matrix eta, array[] int g1, array[] int g2, vector off){
+    return to_vector(eta)[g1] + off[g2];
+}
