@@ -122,15 +122,40 @@ maize_jip_pipeline <- function(run = FALSE){
 maize_biochem_biomass_pipeline <- function(run = FALSE){
    ## Condition to run the pipeline or get warnings if skipped
   if(run){
+    list(
     ## Load join and clean All the datasets needed for the pipeline 
     tar_target(
       name = data_bb,            # bb - Biochem-Biomass
       command = clean_bb_data()
+    ),
+    ## Simulation dataset + truth and primaries Only Simulates DW Covariates 
+    tar_target(
+      name = sim_dw,
+      command = simulate_biomass()
+    ),
+    ## Prior Predictive Checks
+    tar_target(
+      name = model_bb_pp,
+      command = bb_model(sim_dw, prior_only = 1)
+    ),
+    ## Simulation Recovery Check
+    tar_target(
+      name = model_bb_sim,
+      command = bb_model(sim_dw)
+    ),
+    ## Model Fitting
+    tar_target(
+      name = model_bb,
+      command = bb_model(data_bb)
+    ),
+    ## Quatro Report
+    tar_quarto(
+      name = bb_quatro_report,
+      path = "analysis/maize_bb.qmd",
+      quiet = FALSE 
     )
+  )
   }else{
     warning("Target Pipeline Maize Biochem/Biomass will be skipped")
   }
-
-
-
 }
