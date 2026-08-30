@@ -22,7 +22,7 @@ data{
     array[16] int <lower = 1, upper = 16>  pot_treatment_id;  
 
     // OUTCOMES PRIMARY BLOCK ===========================
-    /*SODtreatment_id
+    /*
     All of the primary block outcomes are estimated individual models and they dont relate to each other
     This block contains SOD, CAT, TEAC, Sugars.
     Every one of them we assume Treatment    -> Outcome (Direct Treatment effect)
@@ -60,6 +60,16 @@ data{
     MDA   -> Water Content  
     */
     vector <lower = 0>[N] water_content_dw;
+}
+// TRANSFORMED DATA 
+transformed data {
+   // Get the mean and sd from the data computed once and use them later in the scale_fix 
+   real log_sod_mean    = mean(log(sod_dw));   real log_sod_sd    = sd(log(sod_dw));
+   real log_cat_mean    = mean(log(cat_dw));   real log_cat_sd    = sd(log(cat_dw));
+   real log_sugar_mean  = mean(log(sugar_dw)); real log_sugar_sd  = sd(log(sugar_dw));
+   real log_trolox_mean = mean(log(trolox_dw));real log_trolox_sd = sd(log(trolox_dw));
+   real log_h2o2_mean   = mean(log(h2o2_dw));  real log_h2o2_sd   = sd(log(h2o2_dw));
+   real log_mda_mean    = mean(log(mda_dw));   real log_mda_sd    = sd(log(mda_dw));
 }
 // MODELS PARAMETERS 
 parameters{
@@ -100,12 +110,14 @@ transformed parameters {
     array[7] vector[16] pot_offsets;
     array[7] vector[N]  ni;
     for(i in 1:7){
-        pot_offsets[i] = nco(tau_t[i], pot_treatment_id, zeta_p[i]);
+        pot_offsets[i] = nco(tau_t[i],  pot_treatment_id, zeta_p[i]);
         ni[i]          = get_ni(eta[i], cell_id, pot_id, pot_offsets[i]);
     }
     // Scale every submodel ni that will go in another model mu and for the primaries ni is mu
-    vector[N] mu_sod_z   = scale(ni[1]);  vector[N] mu_cat_z    = scale(ni[2]);
-    vector[N] mu_sugar_z = scale(ni[3]);  vector[N] mu_trolox_z = scale(ni[4]);
+    vector[N] mu_sod_z    = scale_fixed(ni[1], log_sod_mean,    log_sod_sd);  
+    vector[N] mu_cat_z    = scale_fixed(ni[2], log_cat_mean,    log_cat_sd);
+    vector[N] mu_sugar_z  = scale_fixed(ni[3], log_sugar_mean,  log_sugar_sd);  
+    vector[N] mu_trolox_z = scale_fixed(ni[4], log_trolox_mean, log_trolox_sd);
 
     // Construct the rest of the linear predictors
     vector[N] meanlog_h2o2 =
@@ -114,13 +126,13 @@ transformed parameters {
         + beta_cat_dw    * mu_cat_z
         + beta_trolox_dw * mu_trolox_z;
 
-    vector[N] meanlog_h2o2_z = scale(meanlog_h2o2);
+    vector[N] meanlog_h2o2_z = scale_fixed(meanlog_h2o2, log_h2o2_mean, log_h2o2_sd);
 
     vector[N] meanlog_mda = 
             ni[6] 
             + beta_h2o2_dw * meanlog_h2o2_z;
 
-    vector[N] meanlog_mda_z = scale(meanlog_mda);
+    vector[N] meanlog_mda_z = scale_fixed(meanlog_mda, log_mda_mean, log_mda_sd);
 
     vector[N] meanlog_water =
         ni[7]
@@ -143,12 +155,12 @@ model{
 
     // PRIORS TAU_T Variation ======================
     tau_t[1] ~ exponential(15); tau_t[4] ~ exponential(15); tau_t[6]  ~ exponential(30);
-    tau_t[2] ~ exponential(10); tau_t[5] ~ exponential(50); tau_t[7]  ~ exponential(15);
+    tau_t[2] ~ exponential(10); tau_t[5] ~ exponential(20); tau_t[7]  ~ exponential(15);
     tau_t[3] ~ exponential(15);
 
     // PRIORS SD_D Observation ======================
     sd_obs[1] ~ exponential(10.5); sd_obs[2] ~ exponential(3.4); sd_obs[3] ~ exponential(3.6);
-    sd_obs[4] ~ exponential(8.3);  sd_obs[5] ~ exponential(5.8); sd_obs[6] ~ exponential(5.3);
+    sd_obs[4] ~ exponential(12);  sd_obs[5] ~ exponential(5.8);  sd_obs[6] ~ exponential(5.3);
     sd_obs[7] ~ exponential(11);
 
     // RELATIONSHIP PRIORS ====================================================================================

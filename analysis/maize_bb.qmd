@@ -30,5 +30,157 @@ cat("_targets dir exists:", dir.exists("_targets"), "\n")
 cat("_targets.R exists:", file.exists("_targets.R"), "\n")
 cat("Files here:", paste(head(list.files()), collapse = ", "), "\n")
 
+#### Libraries ####
+library(targets)
+library(stanviz)
+library(patchwork)
+library(tidyverse)
 
+#### Load the Targets 
+tar_load("data_bb")
+tar_load("model_bb_pp")
+tar_load("model_bb")
+```
+
+# Prior Predictive Checks Primary Models 
+Prior Predictive of the Primary Models looks to approximates the sample well worth noted in the document the long tails that were clipped for the visualization.
+```{r}
+sod_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "sod_dw_rep",
+  y        =  data_bb$data$sod_dw,
+  outcome_label = "SOD, U/mg DW"
+)
+cat_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "cat_dw_rep",
+  y        = data_bb$data$cat_dw,
+  outcome_label = "CAT, µmol H2O2/min/mg DW"
+) + xlim(c(0, 10))
+
+sugar_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "sugar_dw_rep",
+  y        = data_bb$data$reduced_sugar_dw,
+  outcome_label = "Reducing Sugars, mg Glucose/g DW"   
+)+ xlim(c(0, 150))
+
+trolox_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "trolox_dw_rep",
+  y        = data_bb$data$trolox_umol_dw,
+  outcome_label = "Trolox Equivalent, µmol/g DW" 
+)
+
+## Combine the plots ##
+(sod_dw_ppc + cat_dw_ppc) / (sugar_dw_ppc + trolox_dw_ppc) +
+  plot_annotation(
+    title = "Prior Predictive Distributions of Primary Models",
+    theme = theme(
+      plot.title = element_text(face = "italic", size = 20,hjust = 0.5)
+    )
+  )
+```
+
+# Posterior Predictive Checks Primary Models 
+Prior Distributions Long Tail problems is fixed in the posterior No clipping required.
+The Posterior Accurately approximate the sample 
+```{r}
+sod_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "sod_dw_rep",
+  y        =  data_bb$data$sod_dw,
+  outcome_label = "SOD, U/mg DW"
+)
+cat_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "cat_dw_rep",
+  y        = data_bb$data$cat_dw,
+  outcome_label = "CAT, µmol H2O2/min/mg DW"
+) 
+sugar_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "sugar_dw_rep",
+  y        = data_bb$data$reduced_sugar_dw,
+  outcome_label = "Reducing Sugars, mg Glucose/g DW"   
+)
+trolox_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "trolox_dw_rep",
+  y        = data_bb$data$trolox_umol_dw,
+  outcome_label = "Trolox Equivalent, µmol/g DW" 
+)
+
+## Combine the plots ##
+(sod_dw_ppc + cat_dw_ppc) / (sugar_dw_ppc + trolox_dw_ppc) +
+  plot_annotation(
+    title = "Posterior Predictive Distributions of Primary Models",
+    theme = theme(
+      plot.title = element_text(face = "italic", size = 20,hjust = 0.5)
+    )
+  )
+```
+
+# Prior Predictive Checks for the Rest of the Models 
+```{r}
+h2o2_dw_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "h2o2_dw_rep",
+  y        =  data_bb$data$h2_o2_dw,
+  outcome_label = "H2O2, nmol/g DW"
+)+ xlim(c(0, 300))
+mda_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "mda_dw_rep",
+  y        = data_bb$data$mda_dw,
+  outcome_label = "MDA, nmol/g DW"
+)+xlim(0, 1000)
+
+water_dw_ppc <- stanviz::plot_prior_predictive_dens(
+  model    = model_bb_pp,
+  yrep_var = "water_content_dw_rep",
+  y        = data_bb$data$water_content_dw,
+  outcome_label = "Leaf Water Content Relative to DW"   
+)+ xlim(0, 30)
+
+## Combine the plots ##
+(h2o2_dw_dw_ppc + mda_dw_ppc) / water_dw_ppc +
+  plot_annotation(
+    title = "Prior Predictive Distributions Dependent Models ",
+    theme = theme(
+      plot.title = element_text(face = "italic", size = 20,hjust = 0.5)
+    )
+  )
+```
+
+# Posterior Predictive Distribution of the Dependent Models
+```{r}
+h2o2_dw_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "h2o2_dw_rep",
+  y        =  data_bb$data$h2_o2_dw,
+  outcome_label = "H2O2, nmol/g DW"
+)
+mda_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "mda_dw_rep",
+  y        = data_bb$data$mda_dw,
+  outcome_label = "MDA, nmol/g DW"
+)
+
+water_dw_ppc <- stanviz::plot_ppc_dens(
+  model    = model_bb,
+  yrep_var = "water_content_dw_rep",
+  y        = data_bb$data$water_content_dw,
+  outcome_label = "Leaf Water Content Relative to DW"   
+)
+
+## Combine the plots ##
+(h2o2_dw_dw_ppc + mda_dw_ppc) / water_dw_ppc +
+  plot_annotation(
+    title = "Posterior Predictive Distributions Dependent Models ",
+    theme = theme(
+      plot.title = element_text(face = "italic", size = 20,hjust = 0.5)
+    )
+  )
 ```

@@ -136,7 +136,7 @@ maize_biochem_biomass_pipeline <- function(run = FALSE){
     ## Prior Predictive Checks
     tar_target(
       name = model_bb_pp,
-      command = bb_model(sim_dw, prior_only = 1)
+      command = bb_model(data_bb, prior_only = 1)
     ),
     ## Simulation Recovery Check
     tar_target(

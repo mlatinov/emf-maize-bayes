@@ -1,5 +1,11 @@
 #### Function to Call Stan model M1 Maize BB ####
-bb_model <- function(data_bb, prior_only = 0, stan_file, iter = 2000){
+bb_model <- function(
+  data_bb, 
+  prior_only   = 0, 
+  stan_file    = "Stan/maize_biochem_biomass/M1_maize_bb.stan", 
+  iter         = 2000, 
+  adapt_delta  = 0.95
+){
 
   ## Prepare the data for Stan 
   data             <- data_bb$data
@@ -23,7 +29,7 @@ bb_model <- function(data_bb, prior_only = 0, stan_file, iter = 2000){
   )
 
   ## Compile the stan model 
-  stan_model <- cmdstanr::cmdstan_model(stan_file = "Stan/maize_biochem_biomass/M1_maize_bb.stan")
+  stan_model <- cmdstanr::cmdstan_model(stan_file = stan_file)
 
   ## Sample from the model 
   sample <- stan_model$sample(
@@ -31,7 +37,8 @@ bb_model <- function(data_bb, prior_only = 0, stan_file, iter = 2000){
     iter_sampling = iter,
     chains        = 4,
     output_dir    = "stan_results/",
-    seed          = 42 
+    seed          = 42,
+    adapt_delta   = adapt_delta
   )
   return(sample)
 }

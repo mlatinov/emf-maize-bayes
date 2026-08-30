@@ -1,6 +1,6 @@
 // Normal Scaling function 
-vector scale(vector mu){
-    return (mu - mean(mu) / sd(mu));
+vector scale_fixed(vector mu, real fixed_mean, real fixed_sd){
+    return (mu - fixed_mean) / fixed_sd;
 }
 // Non-centered offsets
 vector nco(vector tau, array[] int group, vector zeta){
