@@ -64,10 +64,9 @@ simulate_h2_02 <- function(
   beta_cad    = 0.05,
   beta_trolox = 0.05,
   lambda_sdlog_obs = 5.7,    
-  mean_cell   = 110,       
-  mean_cell_sd = 0.01,
-  zeta_rate    = 50,
-  seed         = 42
+  mean_cell    = 110,       
+  mean_cell_sd = 0.27,
+  zeta_rate    = 20
 ){
   ## Simulate the experimental design settings ##
   id <- rsims::make_design(
@@ -79,8 +78,6 @@ simulate_h2_02 <- function(
   pot_treatment_id <- id$treatment_idx[!duplicated(id$unit_id)]
 
   ## Simulate the necessary primaries ## 
-  set.seed(seed)
-
   # SOD 
   sod_dw <- simulate_primaries(    
     cell_mean       = 180,      
@@ -118,8 +115,8 @@ simulate_h2_02 <- function(
   u_pot <- zeta_t[pot_treatment_id] * z_pot
 
   ## Standardize the simulated primaries 
-  mu_sod_z <- scale(sod_dw$truth$meanlog)
-  mu_cat_z <- scale(cat_dw$truth$meanlog)
+  mu_sod_z    <- scale(sod_dw$truth$meanlog)
+  mu_cat_z    <- scale(cat_dw$truth$meanlog)
   mu_trolox_z <- scale(trolox_umol_dw$truth$meanlog)
 
   ## Linear predictor 
@@ -242,11 +239,9 @@ simulate_biomass <- function(
   lambda_sdlog_obs  = 11,
   zeta_rate  = 15,
   beta_sugar = 0.05,
-  beta_mda   = 0.01,
-  seed       = 42
+  beta_mda   = 0.01
 ){
   ## Simulate the experimental design settings ##
-  set.seed(seed)
   id <- rsims::make_design(
     nested  = list(treatment = c(Control = 6, Sham = 4, EMF = 6)),
     crossed = list(day = c(14, 21, 28))
