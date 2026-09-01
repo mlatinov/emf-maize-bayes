@@ -1,12 +1,19 @@
-/* 
-  The base model (M1) assumes each mediation path (e.g. SOD -> H2O2,
-   H2O2 -> MDA) has a SINGLE fixed strength across the whole 14/21/28-day
-   window. That's a simplifying assumption, not a biological fact -- these
-   are oxidative-stress pathways, and their coupling strength plausibly
-   shifts over time as the plant's antioxidant response develops. M2/M3
-   test whether the data actually supports that added flexibility, rather
-  than assuming it a priori.
+/* H2O2 -> MDA is the lipid-peroxidation step: H2O2 (and other ROS it
+    represents here) attacks membrane lipids, and MDA is the breakdown
+    product of that damage. This coupling is not necessarily constant:
+    
+    - Early (day 14): H2O2 may be freshly elevated with membrane damage
+       only beginning to accumulate -> a WEAKER instantaneous H2O2->MDA
+        coupling, since MDA is a cumulative/downstream readout.
+    - Later (day 28): sustained H2O2 exposure may have already driven
+        membrane damage into a steady, chronic state -> the relationship
+       could saturate, weaken (damage plateaus despite continued H2O2),
+       OR strengthen (compounding damage, declining repair capacity).
+ Because the direction of this shift isn't obvious a priori, we let the
+ data decide via a partially-pooled day effect, rather than assuming a
+ fixed strength or guessing a direction.
 */
+// M2 -- beta_h2o2_dw allowed to vary by day (H2O2 -> MDA)
 
 // Function Block
 functions{
@@ -114,8 +121,14 @@ parameters{
     // This parameters encodes the causal relations between the models discussed the data input block
     // SOD -> H202               CAT -> H202             TEAC -> H202
     real beta_sod_dw;           real beta_cat_dw;        real beta_trolox_dw;
-    // H202 -> MDA              Sugar -> Water Content   MDA -> Water Content  
-    real beta_h2o2_dw;          real beta_sugar_dw;      real beta_mda_dw;
+    
+    // Sugar -> Water Content   MDA -> Water Content  
+    real beta_sugar_dw;         real beta_mda_dw;
+    
+    // Random Effect H202 -> MDA NCP with domain that lives in the day    
+    real              beta_mean_h2o2_dw;
+    real <lower = 0>  sd_h2o2_dw;
+    vector[3]         zd_h2o2_dw; 
 }
 // TRANSFORM PARAMETERS
 transformed parameters {
@@ -127,6 +140,10 @@ transformed parameters {
         pot_offsets[i] = nco(tau_t[i],  pot_treatment_id, zeta_p[i]);
         ni[i]          = get_ni(eta[i], cell_id, pot_id, pot_offsets[i]);
     }
+
+    // Recover the random Effect on Effect H202 -> MDA , NCP
+    vector[3] beta_h2o2_dw = beta_mean_h2o2_dw + sd_h2o2_dw * zd_h2o2_dw;
+
     // Scale every submodel ni that will go in another model mu and for the primaries ni is mu
     array[4] vector[N] primaries_mu_z;
     {
@@ -143,7 +160,7 @@ transformed parameters {
 
     vector[N] meanlog_h2o2_z = scale_fixed(meanlog_h2o2, samples_log_mean[5], samples_log_sd[5]);
 
-    vector[N] meanlog_mda = ni[6] + beta_h2o2_dw * meanlog_h2o2_z;
+    vector[N] meanlog_mda = ni[6] + beta_h2o2_dw[day_id] .* meanlog_h2o2_z;
 
     vector[N] meanlog_mda_z = scale_fixed(meanlog_mda, samples_log_mean[6], samples_log_sd[6]);
 
@@ -172,16 +189,21 @@ model{
     tau_t[3] ~ exponential(15);
 
     // PRIORS SD_D Observation ======================
-    sd_obs[1] ~ exponential(10.5); sd_obs[2] ~ exponential(3.4); sd_obs[3] ~ exponential(3.6);
-    sd_obs[4] ~ exponential(12);  sd_obs[5] ~ exponential(5.8);  sd_obs[6] ~ exponential(5.3);
+    sd_obs[1] ~ exponential(10.5); sd_obs[2] ~ exponential(3.4);  sd_obs[3] ~ exponential(3.6);
+    sd_obs[4] ~ exponential(12);   sd_obs[5] ~ exponential(5.8);  sd_obs[6] ~ exponential(5.3);
     sd_obs[7] ~ exponential(11);
 
     // RELATIONSHIP PRIORS ====================================================================================
     // SOD -> H202                       CAT -> H202                       TEAC -> H202
-    beta_sod_dw    ~ normal(0.21, 0.10); beta_cat_dw ~ normal(0.05, 0.08); beta_trolox_dw ~ normal(0.05, 0.08); 
+    beta_sod_dw    ~ normal(0.21, 0.10); beta_cat_dw ~ normal(0.05, 0.08); beta_trolox_dw ~ normal(0.05, 0.08);
     
-    // H202 -> MDA                      Sugar -> Water Content             MDA -> Water Content  
-    beta_h2o2_dw   ~ normal(0.18, 0.10); beta_sugar_dw  ~ normal(0, 0.10); beta_mda_dw    ~ normal(0, 0.10); 
+    // Sugar -> Water Content             MDA -> Water Content  
+    beta_sugar_dw  ~ normal(0, 0.10);    beta_mda_dw  ~ normal(0, 0.10); 
+
+    // Random Effect H202 -> MDA NCP with domain that lives in the day    
+    beta_mean_h2o2_dw     ~ normal(0.18, 0.10);
+    sd_h2o2_dw            ~ exponential(10);
+    zd_h2o2_dw            ~ normal(0, 1); 
 
     // Models Likelihoods
     if(prior_only == 0){
