@@ -5,7 +5,7 @@
    are oxidative-stress pathways, and their coupling strength plausibly
    shifts over time as the plant's antioxidant response develops. M2/M3
    test whether the data actually supports that added flexibility, rather
-  than assuming it a priori.
+   than assuming it a priori.
 */
 
 // Function Block
@@ -75,13 +75,35 @@ transformed data {
    // Get the mean and sd from the data computed once and use them later in the scale_fix 
    array[7] real samples_log_mean;
    array[7] real samples_log_sd;
+
+   // Get the 25th and 75th percentile of every covariant in the data
+   int idx_25 = to_int(round(0.25 * N));
+   int idx_75 = to_int(round(0.75 * N));
+
+   array[7] real all_samples_z_q25;
+   array[7] real all_samples_z_q75;
    {
     // Combine the data in one array to loop over
     array[7] vector[N] all_samples = {sod_dw, cat_dw, sugar_dw, trolox_dw, h2o2_dw, mda_dw, water_content_dw}; 
-    
+
+    // Store intermediate results 
+    array[7] vector[N] all_samples_sorted;
+    array[7] real      all_samples_q25;
+    array[7] real      all_samples_q75;
+
     for(i in 1:7){
+        // Calculate the log mean and log sd 
         samples_log_mean[i] = mean(log(all_samples[i]));
         samples_log_sd[i]   = sd(log(all_samples[i]));
+
+        // Calculate the percentiles 25th and 75th Use in generated quantities
+        all_samples_sorted[i] = sort_asc(log(all_samples[i]));
+        all_samples_q25[i]    = all_samples_sorted[i][idx_25];
+        all_samples_q75[i]    = all_samples_sorted[i][idx_75];
+
+        // Z-score the q25 and q75 for all samples
+        all_samples_z_q25[i]  = (all_samples_q25[i] - samples_log_mean[i]) / samples_log_sd[i];
+        all_samples_z_q75[i]  = (all_samples_q75[i] - samples_log_mean[i]) / samples_log_sd[i];
     }
    }
 }
@@ -173,7 +195,7 @@ model{
 
     // PRIORS SD_D Observation ======================
     sd_obs[1] ~ exponential(10.5); sd_obs[2] ~ exponential(3.4); sd_obs[3] ~ exponential(3.6);
-    sd_obs[4] ~ exponential(12);  sd_obs[5] ~ exponential(5.8);  sd_obs[6] ~ exponential(5.3);
+    sd_obs[4] ~ exponential(12);   sd_obs[5] ~ exponential(5.8);  sd_obs[6] ~ exponential(5.3);
     sd_obs[7] ~ exponential(11);
 
     // RELATIONSHIP PRIORS ====================================================================================
@@ -202,6 +224,117 @@ model{
     }
 }
 generated quantities {
+    // POPULATION CELL MEANS, outcome scale =================================================================
+    array[7] vector[N] mu_outcome_scale;  
+    for(i in 1:7){
+       mu_outcome_scale[i] = exp(to_vector(eta[i]));
+    } 
+
+    // CONTRASTS per day (EMF=row 3, Sham=row 2, Control=row 1)==============================================
+    array[7] vector[3] d_emf_ctrl;
+    array[7] vector[3] d_emf_sham;
+    array[7] vector[3] d_sham_ctrl;
+    for(i in 1:7){
+        d_emf_ctrl[i]  = to_vector(eta[i][3] - eta[i][1]); 
+        d_emf_sham[i]  = to_vector(eta[i][3] - eta[i][2]);
+        d_sham_ctrl[i] = to_vector(eta[i][2] - eta[i][1]);
+    }
+
+    // DERIVED QUANTITIES ===================================================================================
+
+    // SOD-associated H₂O₂ production pressure
+    //  How strongly the SOD pathway pushes the system toward H₂O₂ under the specified SOD change.
+    real delta_H_sod_dw = beta_sod_dw * (all_samples_z_q75[1] - all_samples_z_q25[1]);
+    
+    // CAT-mediated H₂O₂ detoxification
+    //  How much H₂O₂ reduction is associated with the specified increase in CAT.
+    real delta_H_cat_dw = beta_cat_dw * (all_samples_z_q75[2] - all_samples_z_q25[2]);
+    
+    // TEAC-mediated H₂O₂ protection
+    // How strongly the non-enzymatic antioxidant capacity represented by TEAC suppresses H₂O₂ under the specified TEAC change
+    real delta_H_teac_dw = beta_trolox_dw * (all_samples_z_q75[4] - all_samples_z_q25[4]);
+    
+    // ROS buffering ratio
+    // Relative CAT buffering strength compared with SOD-associated H₂O₂ pressure.
+    real ros_buffer_ration = delta_H_cat_dw / delta_H_teac_dw;
+
+    // Relative antioxidant contribution
+    // Of the combined modeled CAT + TEAC H₂O₂-reducing response, how much is attributable to TEAC
+    real R_antiox = delta_H_teac_dw / (delta_H_cat_dw + delta_H_teac_dw);
+
+    // Oxidative damage susceptibility
+    // H₂O₂ increases by the specified amount, how much does the model predict MDA to increase?
+    real delta_H_h202_dw = beta_h2o2_dw * (all_samples_z_q75[5] - all_samples_z_q25[5]); 
+
+    // Damage-associated physiological effect
+    // If lipid damage increases, how much does the model predict water content to change?
+    real delta_biomass_mda = beta_mda_dw * (all_samples_z_q75[6] - all_samples_z_q25[6]);
+
+    // MEDIATION ============================================================================================
+    /* Downstream   Mediator  "Direct" bucket              	Question this answers
+1	     H₂O₂	    SOD	       CAT + TEAC + H₂O₂'s own eta	How much of Treatment's effect on H₂O₂ flows through SOD specifically?
+2	     H₂O₂	    CAT        SOD + TEAC + H₂O₂'s own eta	How much flows through CAT specifically?
+3	     H₂O₂	    TEAC	   SOD + CAT + H₂O₂'s own eta	How much flows through TEAC specifically?
+4	     MDA	    H₂O₂	   MDA's own eta	            How much of Treatment's effect on MDA flows through H₂O₂?
+5	     Water	    MDA	       Sugars + Water's own eta	    How much of Treatment's effect on Water flows through MDA?
+6	     Water	    Sugars	   MDA + Water's own eta	    How much of Treatment's effect on Water flows through Sugars?
+    */ 
+    // Estimands of interest 
+    array[3, 3, 3] real PNDE_h2o2;  array[3, 3, 3] real PNDE_mda; array[3, 3, 3] real PNDE_water;
+    array[3, 3, 3] real TNIE_h2o2;  array[3, 3, 3] real TNIE_mda; array[3, 3, 3] real TNIE_water;
+    
+    {
+        // Declare Z-score matrixes for every cell model
+        array[4] matrix[3, 3] primaries_cell_z;
+        matrix[3, 3] mda_cell;    matrix[3, 3] mda_cell_z; 
+        matrix[3, 3] h2_o2_cell;  matrix[3, 3] h2_o2_cell_z;
+        matrix[3, 3] water_cell;  matrix[3, 3] water_cell_z;
+
+        // Loop over every treatment and day to fill the matrixes
+        for(t in 1:3){
+            for(d in 1:3){
+                // Zscore the primaries
+                for(p in 1:4){
+                    primaries_cell_z[t, d, p] = (eta[p][t, d] - samples_log_mean[p]) / samples_log_sd[p];
+                } 
+                // Compute the h2o2 cell matrix with the Z-scored primary cell matrixes and Z-score the h2o2 matrix
+                h2_o2_cell[t, d] = eta[5][t, d] 
+                                    + beta_sod_dw    * primaries_cell_z[1][t, d]
+                                    + beta_cat_dw    * primaries_cell_z[2][t, d] 
+                                    + beta_trolox_dw * primaries_cell_z[4][t, d];
+                
+                h2_o2_cell_z[t, d]  = (h2_o2_cell[t, d] - samples_log_mean[5]) / samples_log_sd[5];
+
+                // Compute the MDA cell matrix and Z-score it 
+                mda_cell[t, d]   = eta[6][t, d]    + beta_h2o2_dw         * h2_o2_cell_z[t, d];
+                mda_cell_z[t, d] = (mda_cell[t, d] - samples_log_mean[6]) / samples_log_sd[6];
+
+                // Compute water cell matrix and Z-score it 
+                water_cell[t, d] = eta[7][t, d] 
+                                    + beta_mda_dw   * mda_cell_z[t, d] 
+                                    + beta_sugar_dw * primaries_cell_z[3][t, d];
+                water_cell_z[t, d] = (water_cell[t, d] - samples_log_mean[7]) / samples_log_sd[7];
+            }
+        }
+        // Compute PNDE and TNIE 
+        for (t1 in 1:3) for (t0 in 1:3) for (d in 1:3) {
+            // H2o2
+            PNDE_h2o2[t1, t0, d] = eta[5][t1, d] - eta[5][t0, d];
+            TNIE_h2o2[t1, t0, d] = beta_sod_dw       * (primaries_cell_z[1][t1, d] - primaries_cell_z[1][t0, d])
+                                    + beta_cat_dw    * (primaries_cell_z[2][t1, d] - primaries_cell_z[2][t0, d])
+                                    + beta_trolox_dw * (primaries_cell_z[4][t1, d] - primaries_cell_z[4][t0, d]);
+            // MDA
+            PNDE_mda[t1, t0, d] =  eta[6][t1, d] - eta[6][t0, d];
+            TNIE_mda[t1, t0, d] =  beta_h2o2_dw  * (h2_o2_cell_z[t1, d] - h2_o2_cell_z[t0, d]);
+
+            // Water 
+            PNDE_water[t1, t0, d] = eta[7][t1, d]  - eta[7][t0, d];
+            TNIE_water[t1, t0, d] = beta_mda_dw    * (mda_cell_z[t1, d]          - mda_cell_z[t0, d])
+                                   + beta_sugar_dw * (primaries_cell_z[3][t1, d] - primaries_cell_z[3][t0, d]);
+        }
+    }
+
+    // REPLICATIONS  and COMPARISON LOO =====================================================================
     array[7] vector[N] meanlog;
     array[7] vector[N] samples_rep;
     array[7] vector[N] log_lik;
