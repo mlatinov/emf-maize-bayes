@@ -21,9 +21,14 @@ data{
     This is CROSSED UNBALANCED DESIGN so the indexes are:
     1. cell_id is the identifier for the combination matrix of unique Treatment x Day
     2. pot_treatment_id is the identifier for the combination of unique Pot x Treatment
+    3. G is Number of Grid Points to Construct Effect Size Curve
     */
     int <lower = 1> N;
     int <lower = 0, upper = 1> prior_only;
+    int <lower = 0, upper = 50> G;
+    vector[G] sod_z_grid;
+    vector[G] h202_z_grid;
+    vector[G] cat_z_grid;
     array[N]  int <lower = 1, upper = 3>   treatment_id;
     array[N]  int <lower = 1, upper = 3>   day_id;
     array[N]  int <lower = 1, upper = 9>   cell_id;
@@ -202,7 +207,7 @@ model{
     // SOD -> H202                       CAT -> H202                       TEAC -> H202
     beta_sod_dw    ~ normal(0.21, 0.10); beta_cat_dw ~ normal(0.05, 0.08); beta_trolox_dw ~ normal(0.05, 0.08); 
     
-    // H202 -> MDA                      Sugar -> Water Content             MDA -> Water Content  
+    // H202 -> MDA                       Sugar -> Water Content            MDA -> Water Content  
     beta_h2o2_dw   ~ normal(0.18, 0.10); beta_sugar_dw  ~ normal(0, 0.10); beta_mda_dw    ~ normal(0, 0.10); 
 
     // Models Likelihoods
@@ -256,7 +261,7 @@ generated quantities {
     
     // ROS buffering ratio
     // Relative CAT buffering strength compared with SOD-associated H₂O₂ pressure.
-    real ros_buffer_ration = delta_H_cat_dw / delta_H_teac_dw;
+    real ros_buffer_ratio = delta_H_cat_dw / delta_H_sod_dw;
 
     // Relative antioxidant contribution
     // Of the combined modeled CAT + TEAC H₂O₂-reducing response, how much is attributable to TEAC
@@ -282,6 +287,10 @@ generated quantities {
     // Estimands of interest 
     array[3, 3, 3] real PNDE_h2o2;  array[3, 3, 3] real PNDE_mda; array[3, 3, 3] real PNDE_water;
     array[3, 3, 3] real TNIE_h2o2;  array[3, 3, 3] real TNIE_mda; array[3, 3, 3] real TNIE_water;
+    array[3, 3, 3] real TNIE_sod;   array[3, 3, 3] real TNIE_cat; array[3, 3, 3] real TNIE_teac;
+    
+    array[3, 3, 3] real TNIE_mda_water;   array[3, 3, 3] real TE_h2o2;
+    array[3, 3, 3] real TNIE_sugar_water; array[3, 3, 3] real TE_mda;  array[3, 3, 3] real TE_water;
     
     {
         // Declare Z-score matrixes for every cell model
@@ -316,24 +325,57 @@ generated quantities {
                 water_cell_z[t, d] = (water_cell[t, d] - samples_log_mean[7]) / samples_log_sd[7];
             }
         }
-        // Compute PNDE and TNIE 
+        // Compute...
+        // 1 PNDE -(Pure Natural Direct Effect)    as E[Y(1, M (0))] − E[Y(0, M (0))]
+        // 2 TNIE -(Total Natural Indirect Effect) as E[Y(1, M (1))] − E[Y(1, M (0))]
+        // 3 TE   -(Total Effect)                  as PNDE + TNIE
         for (t1 in 1:3) for (t0 in 1:3) for (d in 1:3) {
             // H2o2
+            TNIE_sod[t1, t0, d]  = beta_sod_dw    * (primaries_cell_z[1][t1, d] - primaries_cell_z[1][t0, d]);
+            TNIE_cat[t1, t0, d]  = beta_cat_dw    * (primaries_cell_z[2][t1, d] - primaries_cell_z[2][t0, d]);
+            TNIE_teac[t1, t0, d] = beta_trolox_dw * (primaries_cell_z[4][t1, d] - primaries_cell_z[4][t0, d]);
+
             PNDE_h2o2[t1, t0, d] = eta[5][t1, d] - eta[5][t0, d];
-            TNIE_h2o2[t1, t0, d] = beta_sod_dw       * (primaries_cell_z[1][t1, d] - primaries_cell_z[1][t0, d])
-                                    + beta_cat_dw    * (primaries_cell_z[2][t1, d] - primaries_cell_z[2][t0, d])
-                                    + beta_trolox_dw * (primaries_cell_z[4][t1, d] - primaries_cell_z[4][t0, d]);
+            TNIE_h2o2[t1, t0, d] = TNIE_sod[t1, t0, d] + TNIE_cat[t1, t0, d] + TNIE_teac[t1, t0, d];
+
             // MDA
             PNDE_mda[t1, t0, d] =  eta[6][t1, d] - eta[6][t0, d];
             TNIE_mda[t1, t0, d] =  beta_h2o2_dw  * (h2_o2_cell_z[t1, d] - h2_o2_cell_z[t0, d]);
 
             // Water 
-            PNDE_water[t1, t0, d] = eta[7][t1, d]  - eta[7][t0, d];
-            TNIE_water[t1, t0, d] = beta_mda_dw    * (mda_cell_z[t1, d]          - mda_cell_z[t0, d])
-                                   + beta_sugar_dw * (primaries_cell_z[3][t1, d] - primaries_cell_z[3][t0, d]);
+            TNIE_mda_water[t1, t0, d]   = beta_mda_dw   * (mda_cell_z[t1, d]          - mda_cell_z[t0, d]);
+            TNIE_sugar_water[t1, t0, d] = beta_sugar_dw * (primaries_cell_z[3][t1, d] - primaries_cell_z[3][t0, d]);
+
+            PNDE_water[t1, t0, d] = eta[7][t1, d] - eta[7][t0, d];
+            TNIE_water[t1, t0, d] = TNIE_mda_water[t1, t0, d] + TNIE_sugar_water[t1, t0, d];
+
+            // Calculate the Total effect (TE)
+            TE_h2o2[t1, t0, d]  = PNDE_h2o2[t1, t0, d]  + TNIE_h2o2[t1, t0, d];
+            TE_mda[t1, t0, d]   = PNDE_mda[t1, t0, d]   + TNIE_mda[t1, t0, d];
+            TE_water[t1, t0, d] = PNDE_water[t1, t0, d] + TNIE_water[t1, t0, d];
         }
     }
 
+    // Effect Size Curves ===================================================================================
+    // Construction of Effect Curve for SOD -> H2O2 , H2O2 -> MDA, CAT -> H2O2
+    array[3] vector[G] effect_curves;
+    {
+        for(g in 1:G){
+            // SOD -> H2O2
+            effect_curves[1][g] = mean(to_vector(eta[5]))
+                                + beta_sod_dw    * sod_z_grid[g]
+                                + beta_cat_dw    * 0
+                                + beta_trolox_dw * 0;
+            // CAT -> H2O2
+            effect_curves[2][g] = mean(to_vector(eta[5]))
+                                + beta_sod_dw    * 0
+                                + beta_cat_dw    * cat_z_grid[g]
+                                + beta_trolox_dw * 0;
+            // H2O2 -> MDA
+            effect_curves[3][g] = mean(to_vector(eta[6])) 
+                                + beta_h2o2_dw * h202_z_grid[g];
+        }
+    }
     // REPLICATIONS  and COMPARISON LOO =====================================================================
     array[7] vector[N] meanlog;
     array[7] vector[N] samples_rep;
