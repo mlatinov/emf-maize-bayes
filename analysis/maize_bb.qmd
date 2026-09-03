@@ -37,37 +37,38 @@ library(patchwork)
 library(tidyverse)
 
 #### Load the Targets 
-tar_load("data_bb")
-tar_load("model_bb_pp")
-tar_load("model_bb")
+tar_load(data_bb)
+tar_load(model_bb_base)
+tar_load(model_bb_pp_base)
+
 ```
 
 # Prior Predictive Checks Primary Models 
 Prior Predictive of the Primary Models looks to approximates the sample well worth noted in the document the long tails that were clipped for the visualization.
 ```{r}
 sod_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "sod_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[1,]",
   y        =  data_bb$data$sod_dw,
   outcome_label = "SOD, U/mg DW"
 )
 cat_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "cat_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[2,]",
   y        = data_bb$data$cat_dw,
   outcome_label = "CAT, µmol H2O2/min/mg DW"
 ) + xlim(c(0, 10))
 
 sugar_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "sugar_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[3,]",
   y        = data_bb$data$reduced_sugar_dw,
   outcome_label = "Reducing Sugars, mg Glucose/g DW"   
 )+ xlim(c(0, 150))
 
 trolox_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "trolox_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[4,]",
   y        = data_bb$data$trolox_umol_dw,
   outcome_label = "Trolox Equivalent, µmol/g DW" 
 )
@@ -86,27 +87,63 @@ trolox_dw_ppc <- stanviz::plot_prior_predictive_dens(
 Prior Distributions Long Tail problems is fixed in the posterior No clipping required.
 The Posterior Accurately approximate the sample 
 ```{r}
+sod_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[1,]",
+  y        =  data_bb$data$sod_dw,
+  outcome_label = "SOD, U/mg DW"
+)
+cat_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[2,]",
+  y        = data_bb$data$cat_dw,
+  outcome_label = "CAT, µmol H2O2/min/mg DW"
+) 
+sugar_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[3,]",
+  y        = data_bb$data$reduced_sugar_dw,
+  outcome_label = "Reducing Sugars, mg Glucose/g DW"   
+)
+trolox_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[4,]",
+  y        = data_bb$data$trolox_umol_dw,
+  outcome_label = "Trolox Equivalent, µmol/g DW" 
+)
+
+## Combine the plots ##
+(sod_dw_ppc + cat_dw_ppc) / (sugar_dw_ppc + trolox_dw_ppc) +
+  plot_annotation(
+    title = "Posterior Predictive ECDF of Primary Models",
+    theme = theme(
+      plot.title = element_text(face = "italic", size = 20,hjust = 0.5)
+    )
+  )
+```
+
+```{r}
 sod_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "sod_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[1,]",
   y        =  data_bb$data$sod_dw,
   outcome_label = "SOD, U/mg DW"
 )
 cat_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "cat_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[2,]",
   y        = data_bb$data$cat_dw,
   outcome_label = "CAT, µmol H2O2/min/mg DW"
 ) 
 sugar_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "sugar_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[3,]",
   y        = data_bb$data$reduced_sugar_dw,
   outcome_label = "Reducing Sugars, mg Glucose/g DW"   
 )
 trolox_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "trolox_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[4,]",
   y        = data_bb$data$trolox_umol_dw,
   outcome_label = "Trolox Equivalent, µmol/g DW" 
 )
@@ -124,24 +161,24 @@ trolox_dw_ppc <- stanviz::plot_ppc_dens(
 # Prior Predictive Checks for the Rest of the Models 
 ```{r}
 h2o2_dw_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "h2o2_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[5,]",
   y        =  data_bb$data$h2_o2_dw,
   outcome_label = "H2O2, nmol/g DW"
 )+ xlim(c(0, 300))
 mda_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "mda_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[6,]",
   y        = data_bb$data$mda_dw,
   outcome_label = "MDA, nmol/g DW"
 )+xlim(0, 1000)
 
 water_dw_ppc <- stanviz::plot_prior_predictive_dens(
-  model    = model_bb_pp,
-  yrep_var = "water_content_dw_rep",
+  model    = model_bb_pp_base$sample,
+  yrep_var = "samples_rep[7,]",
   y        = data_bb$data$water_content_dw,
   outcome_label = "Leaf Water Content Relative to DW"   
-)+ xlim(0, 30)
+)+ xlim(0, 20)
 
 ## Combine the plots ##
 (h2o2_dw_dw_ppc + mda_dw_ppc) / water_dw_ppc +
@@ -156,21 +193,21 @@ water_dw_ppc <- stanviz::plot_prior_predictive_dens(
 # Posterior Predictive Distribution of the Dependent Models
 ```{r}
 h2o2_dw_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "h2o2_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[5,]",
   y        =  data_bb$data$h2_o2_dw,
   outcome_label = "H2O2, nmol/g DW"
 )
 mda_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "mda_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[6,]",
   y        = data_bb$data$mda_dw,
   outcome_label = "MDA, nmol/g DW"
 )
 
 water_dw_ppc <- stanviz::plot_ppc_dens(
-  model    = model_bb,
-  yrep_var = "water_content_dw_rep",
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[7,]",
   y        = data_bb$data$water_content_dw,
   outcome_label = "Leaf Water Content Relative to DW"   
 )
@@ -184,3 +221,287 @@ water_dw_ppc <- stanviz::plot_ppc_dens(
     )
   )
 ```
+
+```{r}
+h2o2_dw_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[5,]",
+  y        =  data_bb$data$h2_o2_dw,
+  outcome_label = "H2O2, nmol/g DW"
+)
+mda_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[6,]",
+  y        = data_bb$data$mda_dw,
+  outcome_label = "MDA, nmol/g DW"
+)
+
+water_dw_ppc <- stanviz::plot_ppc_ecdf(
+  model    = model_bb_base$sample,
+  yrep_var = "samples_rep[7,]",
+  y        = data_bb$data$water_content_dw,
+  outcome_label = "Leaf Water Content Relative to DW"   
+)
+
+## Combine the plots ##
+(h2o2_dw_dw_ppc + mda_dw_ppc) / water_dw_ppc +
+  plot_annotation(
+    title = "Posterior Predictive ECDF Dependent Models ",
+    theme = theme(
+      plot.title = element_text(face = "italic", size = 20,hjust = 0.5)
+    )
+  )
+```
+
+# Treatment contrasts
+
+## SOD
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[1,1]", "d_emf_ctrl[1,2]", "d_emf_ctrl[1,3]"),
+  labels = c(
+    "d_emf_ctrl[1,1]" = "EMF-Control 14",
+    "d_emf_ctrl[1,2]" = "EMF-Control 21",
+    "d_emf_ctrl[1,3]" = "EMF-Control 28"
+  )
+)
+```
+
+## CAT 
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[2,1]", "d_emf_ctrl[2,2]", "d_emf_ctrl[2,3]"),
+  labels = c(
+    "d_emf_ctrl[2,1]" = "EMF-Control 14",
+    "d_emf_ctrl[2,2]" = "EMF-Control 21",
+    "d_emf_ctrl[2,3]" = "EMF-Control 28"
+  )
+)
+```
+
+## TEAC 
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[4,1]", "d_emf_ctrl[4,2]", "d_emf_ctrl[4,3]"),
+  labels = c(
+    "d_emf_ctrl[4,1]" = "EMF-Control 14",
+    "d_emf_ctrl[4,2]" = "EMF-Control 21",
+    "d_emf_ctrl[4,3]" = "EMF-Control 28"
+  )
+)
+```
+
+
+## Sugar
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[3,1]", "d_emf_ctrl[3,2]", "d_emf_ctrl[3,3]"),
+  labels = c(
+    "d_emf_ctrl[3,1]" = "EMF-Control 14",
+    "d_emf_ctrl[3,2]" = "EMF-Control 21",
+    "d_emf_ctrl[3,3]" = "EMF-Control 28"
+  )
+)
+```
+
+## H2o2
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[5,1]", "d_emf_ctrl[5,2]", "d_emf_ctrl[5,3]"),
+  labels = c(
+    "d_emf_ctrl[5,1]" = "EMF-Control 14",
+    "d_emf_ctrl[5,2]" = "EMF-Control 21",
+    "d_emf_ctrl[5,3]" = "EMF-Control 28"
+  )
+)
+```
+
+## MDA
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[6,1]", "d_emf_ctrl[6,2]", "d_emf_ctrl[6,3]"),
+  labels = c(
+    "d_emf_ctrl[6,1]" = "EMF-Control 14",
+    "d_emf_ctrl[6,2]" = "EMF-Control 21",
+    "d_emf_ctrl[6,3]" = "EMF-Control 28"
+  )
+)
+```
+
+## Water
+```{r}
+stanviz::plot_coef_forest(
+  model = model_bb_base$sample,
+  pars  = c("d_emf_ctrl[7,1]", "d_emf_ctrl[7,2]", "d_emf_ctrl[7,3]"),
+  labels = c(
+    "d_emf_ctrl[7,1]" = "EMF-Control 14",
+    "d_emf_ctrl[7,2]" = "EMF-Control 21",
+    "d_emf_ctrl[7,3]" = "EMF-Control 28"
+  )
+)
+```
+
+# Path coefficients (betas)
+```{r}
+stanviz::plot_coef_forest(
+  model  = model_bb_base$sample,
+  pars   = c("beta_sod_dw", "beta_cat_dw", "beta_trolox_dw", "beta_h2o2_dw", "beta_sugar_dw", "beta_mda_dw"),
+  labels = c(
+    "beta_sod_dw"    = "SOD-H202", 
+    "beta_cat_dw"    = "CAT-H202",
+    "beta_trolox_dw" = "TEAC-H202",  
+    "beta_h2o2_dw"   = "H202-MDA",
+    "beta_sugar_dw"  = "SUGAR-Water",
+    "beta_mda_dw"    = "MDA-Water"
+  )
+)
+```
+
+# Conditional Effects 
+
+## SOD-H202
+```{r}
+stanviz::plot_effect_curve(
+  model         = model_bb_base$sample,
+  effect_var    = "effect_curves[1,]",
+  x             = model_bb_base$stan_data$sod_z_grid,                    
+  x_obs         = (log(data_bb$data$sod_dw) - mean(log(data_bb$data$sod_dw))) / sd(log(data_bb$data$sod_dw)),
+  y_obs         = log(data_bb$data$h2_o2_dw),
+  outcome_label = "log H2O2, nmol/g DW",
+  x_label       = "SOD, U/mg DW (standardized)"
+)
+```
+
+## CAT-H2O2
+```{r}
+stanviz::plot_effect_curve(
+  model         = model_bb_base$sample,
+  effect_var    = "effect_curves[2,]",
+  x             = model_bb_base$stan_data$cat_z_grid,                    
+  x_obs         = (log(data_bb$data$cat_dw) - mean(log(data_bb$data$cat_dw))) / sd(log(data_bb$data$cat_dw)),
+  y_obs         = log(data_bb$data$h2_o2_dw),
+  outcome_label = "log H2O2, nmol/g DW",
+  x_label       = "CAT, µmol H2O2/min/mg DW (standardized)"
+)
+```
+
+## H2O2-MDA
+```{r}
+stanviz::plot_effect_curve(
+  model         = model_bb_base$sample,
+  effect_var    = "effect_curves[3,]",
+  x             = model_bb_base$stan_data$h202_z_grid,                    
+  x_obs         = (log(data_bb$data$h2_o2_dw) - mean(log(data_bb$data$h2_o2_dw))) / sd(log(data_bb$data$h2_o2_dw)),
+  y_obs         = log(data_bb$data$mda_dw),
+  outcome_label = "log MDA, nmol/g DW",
+  x_label       = "H2O2, nmol/g DW (standardized)"
+)
+```
+
+# Mediation decomposition
+
+## EMF vs Control, day 14
+```{r}
+plot_indirect_effects(
+  model_bb_base$sample,
+  nie_vars = c(
+    "SOD"  = "TNIE_sod[3,1,1]",
+    "CAT"  = "TNIE_cat[3,1,1]",
+    "TEAC" = "TNIE_teac[3,1,1]"
+  ),
+  effect_units = "log H2O2",
+  sort = TRUE
+)
+
+plot_indirect_effects(
+  model_bb_base$sample,
+  nie_vars = c(
+    "MDA"    = "TNIE_mda_water[3,1,1]",
+    "Sugars" = "TNIE_sugar_water[3,1,1]"
+  ),
+  effect_units = "log water content",
+  sort = TRUE
+)
+```
+
+## EMF vs Control, day 21
+```{r}
+plot_indirect_effects(
+  model_bb_base$sample,
+  nie_vars = c(
+    "SOD"  = "TNIE_sod[3,1,2]",
+    "CAT"  = "TNIE_cat[3,1,2]",
+    "TEAC" = "TNIE_teac[3,1,2]"
+  ),
+  effect_units = "log H2O2",
+  sort = TRUE
+)
+
+plot_indirect_effects(
+  model_bb_base$sample,
+  nie_vars = c(
+    "MDA"    = "TNIE_mda_water[3,1,2]",
+    "Sugars" = "TNIE_sugar_water[3,1,2]"
+  ),
+  effect_units = "log water content",
+  sort = TRUE
+)
+```
+
+## EMF vs Control, day 28
+```{r}
+plot_indirect_effects(
+  model_bb_base$sample,
+  nie_vars = c(
+    "SOD"  = "TNIE_sod[3,1,3]",
+    "CAT"  = "TNIE_cat[3,1,3]",
+    "TEAC" = "TNIE_teac[3,1,3]"
+  ),
+  effect_units = "log H2O2",
+  sort = TRUE
+)
+
+plot_indirect_effects(
+  model_bb_base$sample,
+  nie_vars = c(
+    "MDA"    = "TNIE_mda_water[3,1,3]",
+    "Sugars" = "TNIE_sugar_water[3,1,3]"
+  ),
+  effect_units = "log water content",
+  sort = TRUE
+)
+```
+
+# TE
+```{r}
+plot_effect_decomposition(
+  model_bb_base$sample,
+  direct_var   = "PNDE_h2o2[3,1,1]",
+  indirect_var = "TNIE_h2o2[3,1,1]",
+  total_var    = "TE_h2o2[3,1,1]",
+  effect_units = "log H2O2"
+)
+
+plot_effect_decomposition(
+  model_bb_base$sample,
+  direct_var   = "PNDE_mda[3,1,1]",
+  indirect_var = "TNIE_mda[3,1,1]",
+  total_var    = "TE_mda[3,1,1]",
+  effect_units = "log MDA"
+)
+
+plot_effect_decomposition(
+  model_bb_base$sample,
+  direct_var   = "PNDE_water[3,1,1]",
+  indirect_var = "TNIE_water[3,1,1]",
+  total_var    = "TE_water[3,1,1]",
+  effect_units = "log water content"
+)
+```
+
