@@ -199,7 +199,7 @@ model{
     tau_t[3] ~ exponential(15);
 
     // PRIORS SD_D Observation ======================
-    sd_obs[1] ~ exponential(10.5); sd_obs[2] ~ exponential(3.4); sd_obs[3] ~ exponential(3.6);
+    sd_obs[1] ~ exponential(10.5); sd_obs[2] ~ exponential(3.4);  sd_obs[3] ~ exponential(3.6);
     sd_obs[4] ~ exponential(12);   sd_obs[5] ~ exponential(5.8);  sd_obs[6] ~ exponential(5.3);
     sd_obs[7] ~ exponential(11);
 
@@ -239,6 +239,7 @@ model{
     }
 }
 generated quantities {
+    // Replication and comparisons ==========================================================================
     array[7] vector[N] meanlog;
     array[7] vector[N] samples_rep;
     array[7] vector[N] log_lik;
