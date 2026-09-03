@@ -225,9 +225,9 @@ model{
 }
 generated quantities {
     // POPULATION CELL MEANS, outcome scale =================================================================
-    array[7] vector[N] mu_outcome_scale;  
+    array[7] matrix[3, 3] mu_outcome_scale;  
     for(i in 1:7){
-       mu_outcome_scale[i] = exp(to_vector(eta[i]));
+       mu_outcome_scale[i] = exp((eta[i]));
     } 
 
     // CONTRASTS per day (EMF=row 3, Sham=row 2, Control=row 1)==============================================
@@ -295,7 +295,7 @@ generated quantities {
             for(d in 1:3){
                 // Zscore the primaries
                 for(p in 1:4){
-                    primaries_cell_z[t, d, p] = (eta[p][t, d] - samples_log_mean[p]) / samples_log_sd[p];
+                    primaries_cell_z[p][t, d] = (eta[p][t, d] - samples_log_mean[p]) / samples_log_sd[p];
                 } 
                 // Compute the h2o2 cell matrix with the Z-scored primary cell matrixes and Z-score the h2o2 matrix
                 h2_o2_cell[t, d] = eta[5][t, d] 
