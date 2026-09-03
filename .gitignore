@@ -52,3 +52,33 @@ rsconnect/
 /_targets
 /stan_results
 /analysis/maize_height_files
+
+# HTML
+*.html
+
+# CSS
+*.css
+
+# JavaScript
+*.js
+
+# Fonts
+*.woff
+*.woff2
+
+# Bootstrap / web assets
+bootstrap/
+bootstrap-*/
+
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+*.stan.hpp
+*.stan.cpp
+*.exe
+*.hpp
+*.o
+*.rds
+*json
