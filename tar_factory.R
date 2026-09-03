@@ -135,18 +135,15 @@ maize_biochem_biomass_pipeline <- function(run = FALSE){
     ),
     ## Prior Predictive Checks
     tar_target(
-      name = model_bb_pp,
-      command = bb_model(data_bb, prior_only = 1)
+      name = model_bb_pp_base,
+      command = bb_model(data_bb, prior_only = 1,  stan_file = "Stan/maize_biochem_biomass/M1_maize_bb.stan")
     ),
-    ## Simulation Recovery Check
+    ## Model Fitting ##
+
+    # Baseline Model only with Partially Polled Intercept and Day Observation Variation
     tar_target(
-      name = model_bb_sim,
-      command = bb_model(sim_dw)
-    ),
-    ## Model Fitting
-    tar_target(
-      name = model_bb,
-      command = bb_model(data_bb)
+      name = model_bb_base,
+      command = bb_model(data_bb, stan_file = "Stan/maize_biochem_biomass/M1_maize_bb.stan")
     ),
     ## Quatro Report
     tar_quarto(
